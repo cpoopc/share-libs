@@ -108,15 +108,15 @@
 
 ```bash
 # 按 session_id 追踪
-./runners/run_trace.sh s-xxx --save-json
+iva-logtracer trace s-xxx --env production --save-json
 
 # 按 conversation_id 追踪
-./runners/run_trace.sh c7b8b6fe-a5fa-4151-89d6-51782bf08e23 --save-json
+iva-logtracer trace c7b8b6fe-a5fa-4151-89d6-51782bf08e23 --env production --save-json
 ```
 
 ## 输出文件
 
-追踪完成后，会在 `output/iva_session/{session_id}-{conversation_id}/` 目录下生成：
+追踪完成后，默认会在 `~/.cache/iva-logtracer/output/iva_session/{trace_dir}/` 目录下生成：
 
 - `assistant_runtime_trace.json` - Assistant Runtime 日志
 - `agent_service_trace.json` - Agent Service 日志
@@ -126,4 +126,3 @@
 - `cprc_srs_trace.json` - CPRC SRS 日志
 - `cprc_sgs_trace.json` - CPRC SGS 日志
 - `combine.log` - 合并后的时间线日志
-

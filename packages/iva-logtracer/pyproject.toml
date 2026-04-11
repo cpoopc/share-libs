@@ -9,9 +9,9 @@ description = "IVA/Nova session tracing and debugging tools"
 requires-python = ">=3.10"
 dependencies = [
     "pyyaml>=6.0",
-    "cptools-common",
-    "cptools-kibana",
-    "cptools-web-libs-timeline",
+    "cptools-common @ git+ssh://git@github.com/cpoopc/share-libs.git@main#subdirectory=tools/python/libs/common",
+    "cptools-kibana @ git+ssh://git@github.com/cpoopc/share-libs.git@main#subdirectory=tools/python/libs/kibana",
+    "cptools-web-libs-timeline @ git+ssh://git@github.com/cpoopc/share-libs.git@main#subdirectory=tools/web/libs/timeline",
     "jinja2>=3.1.6",
 ]
 
@@ -29,9 +29,4 @@ iva-logtracer = "logtracer_extractors.cli:main"
 
 [tool.setuptools.packages.find]
 where = ["."]
-include = ["logtracer_extractors*", "runners*", "utils*"]
-
-[tool.uv.sources]
-cptools-common = { path = "../../tools/python/libs/common", editable = true }
-cptools-kibana = { path = "../../tools/python/libs/kibana", editable = true }
-cptools-web-libs-timeline = { path = "../../tools/web/libs/timeline", editable = true }
+include = ["logtracer_extractors*", "utils*"]

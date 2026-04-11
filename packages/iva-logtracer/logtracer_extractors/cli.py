@@ -3,13 +3,26 @@
 from __future__ import annotations
 
 import argparse
+import json
 
-from logtracer_extractors.runtime import load_env_file
+from logtracer_extractors.runtime import (
+    get_runtime_diagnostics,
+    init_runtime_home,
+    load_env_file,
+)
 
 
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(prog="iva-logtracer")
     subcommands = parser.add_subparsers(dest="command", required=True)
+
+    init = subcommands.add_parser("init")
+    init.add_argument("--env", help="Optional named environment, for example production")
+    init.add_argument("--force", action="store_true", help="Overwrite the target .env file if it already exists")
+
+    doctor = subcommands.add_parser("doctor")
+    doctor.add_argument("--env", help="Optional named environment, for example production")
+    doctor.add_argument("--format", choices=["text", "json"], default="text")
 
     discover = subcommands.add_parser("discover")
     discover.add_argument("--env", required=True)
@@ -45,6 +58,25 @@ def build_parser() -> argparse.ArgumentParser:
     turn.add_argument("--viz", "-v", action="store_true")
     turn.add_argument("--html", action="store_true")
 
+    report = subcommands.add_parser("report")
+    report.add_argument("session_dirs", nargs="+", help="Saved iva session output directories")
+    report.add_argument("--format", choices=["markdown", "json"], default="markdown")
+    report.add_argument("--lang", choices=["zh", "en"], default="zh")
+    report.add_argument("--output", "-o")
+    report.add_argument("--reported-symptom")
+
+    audit = subcommands.add_parser("audit")
+    audit_subcommands = audit.add_subparsers(dest="audit_command", required=True)
+
+    audit_kb = audit_subcommands.add_parser("kb")
+    audit_kb.add_argument("trace_dir", help="Path to iva-logtracer output directory")
+    audit_kb.add_argument("--tool", default="air_searchCompanyKnowledgeBase")
+
+    audit_tools = audit_subcommands.add_parser("tools")
+    audit_tools.add_argument("session_dirs", nargs="+", help="Saved iva session output directories")
+    audit_tools.add_argument("--format", choices=["markdown", "json"], default="markdown")
+    audit_tools.add_argument("--output", "-o")
+
     return parser
 
 
@@ -68,8 +100,43 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     return args
 
 
+def _render_doctor_output(diagnostics: dict[str, object]) -> str:
+    required_vars = diagnostics.get("required_vars", {})
+    lines = [
+        "IVA Logtracer Doctor",
+        f"package_root: {diagnostics['package_root']}",
+        f"config_root:  {diagnostics['config_root']}",
+        f"cache_root:   {diagnostics['cache_root']}",
+        f"output_root:  {diagnostics['output_root']}",
+        f"env_path:     {diagnostics['env_path']}",
+        f"env_exists:   {diagnostics['env_exists']}",
+    ]
+    if "env_load_error" in diagnostics:
+        lines.append(f"env_load_error: {diagnostics['env_load_error']}")
+    elif required_vars:
+        lines.append("required_vars:")
+        for key, present in required_vars.items():
+            lines.append(f"  - {key}: {'ok' if present else 'missing'}")
+    return "\n".join(lines)
+
+
 def main(argv: list[str] | None = None) -> int:
     args = parse_args(argv)
+
+    if args.command == "init":
+        paths = init_runtime_home(force=args.force, env_name=args.env)
+        print(f"✅ Config initialized at: {paths['config_root']}")
+        print(f"✅ Env file: {paths['env_path']}")
+        print(f"✅ Output root: {paths['output_root']}")
+        return 0
+
+    if args.command == "doctor":
+        diagnostics = get_runtime_diagnostics(args.env)
+        if args.format == "json":
+            print(json.dumps(diagnostics, indent=2, ensure_ascii=False, default=str))
+        else:
+            print(_render_doctor_output(diagnostics))
+        return 0
 
     if args.command == "discover":
         from logtracer_extractors.iva.discovery.command import run_discovery_command
@@ -113,6 +180,31 @@ def main(argv: list[str] | None = None) -> int:
         if args.html:
             delegated_argv.append("--html")
         return analyzer.main(delegated_argv)
+
+    if args.command == "report":
+        from logtracer_extractors.scripts import diagnostic_report
+
+        delegated_argv = [*args.session_dirs, "--format", args.format, "--lang", args.lang]
+        if args.output:
+            delegated_argv.extend(["--output", args.output])
+        if args.reported_symptom:
+            delegated_argv.extend(["--reported-symptom", args.reported_symptom])
+        return diagnostic_report.main(delegated_argv)
+
+    if args.command == "audit":
+        if args.audit_command == "kb":
+            from logtracer_extractors.scripts import kb_tool_audit
+
+            delegated_argv = [args.trace_dir, "--tool", args.tool]
+            return kb_tool_audit.main(delegated_argv)
+
+        if args.audit_command == "tools":
+            from logtracer_extractors.scripts import toolcall_audit
+
+            delegated_argv = [*args.session_dirs, "--format", args.format]
+            if args.output:
+                delegated_argv.extend(["--output", args.output])
+            return toolcall_audit.main(delegated_argv)
 
     return 1
 

@@ -19,7 +19,7 @@ IVA Log Tracer 是一个专为 **IVA (Intelligent Virtual Assistant)** 开发者
 **目标**：快速定位用户反馈的 "IVA 不回复" 或 "回复错误" 问题。
 **流程**：
 1.  获取用户提供的 `sessionId`。
-2.  在 IVA Log Tracer 中输入 `sessionId`。
+2.  运行 `iva-logtracer trace <sessionId> --env production --save-json`。
 3.  系统自动拉取 AR, NSA, Agent Service 等组件的日志。
 4.  开启 **Time Sync** 功能，滚动查看各组件在同一时刻的行为。
 5.  使用 **Log Level: ERROR** 快速定位报错节点 (例如：Agent Service 超时，或 NCA 模型生成失败)。
@@ -28,7 +28,7 @@ IVA Log Tracer 是一个专为 **IVA (Intelligent Virtual Assistant)** 开发者
 **用户角色**：算法工程师 / 对话设计师
 **目标**：分析特定场景下的多轮对话逻辑是否符合预期。
 **流程**：
-1.  使用 **Turn Analysis** 功能 (`run_turn.sh`) 分析历史会话。
+1.  使用 `iva-logtracer turn <saved-trace-dir>` 分析历史会话。
 2.  查看生成的 Markdown 报告，检查每个 Turn 的关键节点：
     *   ASR 识别结果 (`cprc_srs`)
     *   NCA 的 Tool Call 参数是否准确
@@ -54,4 +54,4 @@ IVA Log Tracer 是一个专为 **IVA (Intelligent Virtual Assistant)** 开发者
 ## 4. 技术架构亮点
 -   **Backend**: Python FastAPI, 集成 Elasticsearch/Kibana Client，负责复杂的日志查询与关联逻辑。
 -   **Frontend**: React + Vite + Tailwind，提供类似 IDE 的多窗口并排体验，支持虚拟滚动 (Virtual Scroll) 以流畅展示海量日志。
--   **CLI**: 提供 Shell 脚本 (`run_trace.sh`, `run_turn.sh`) 方便脚本化调用和生成离线报告。
+-   **CLI**: 提供 `iva-logtracer trace|turn|report|audit` 等命令，方便脚本化调用和生成离线报告。

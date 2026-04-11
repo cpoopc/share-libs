@@ -60,6 +60,31 @@ def test_cli_exposes_trace_and_turn_subcommands() -> None:
     assert turn_args.html is True
 
 
+def test_cli_exposes_init_doctor_report_and_audit_subcommands() -> None:
+    parser = build_parser()
+
+    init_args = parser.parse_args(["init", "--env", "production"])
+    doctor_args = parser.parse_args(["doctor", "--format", "json"])
+    report_args = parser.parse_args(
+        ["report", "/tmp/session-dir", "--format", "markdown", "--reported-symptom", "AIR answered wrong"]
+    )
+    audit_kb_args = parser.parse_args(["audit", "kb", "/tmp/session-dir"])
+    audit_tools_args = parser.parse_args(["audit", "tools", "/tmp/session-a", "/tmp/session-b", "--format", "json"])
+
+    assert init_args.command == "init"
+    assert init_args.env == "production"
+    assert doctor_args.command == "doctor"
+    assert doctor_args.format == "json"
+    assert report_args.command == "report"
+    assert report_args.session_dirs == ["/tmp/session-dir"]
+    assert report_args.reported_symptom == "AIR answered wrong"
+    assert audit_kb_args.command == "audit"
+    assert audit_kb_args.audit_command == "kb"
+    assert audit_tools_args.command == "audit"
+    assert audit_tools_args.audit_command == "tools"
+    assert audit_tools_args.session_dirs == ["/tmp/session-a", "/tmp/session-b"]
+
+
 @pytest.mark.parametrize(
     "argv",
     [
@@ -184,6 +209,54 @@ def test_main_dispatches_turn_command(monkeypatch: pytest.MonkeyPatch) -> None:
         "markdown",
         "--html",
     ]
+
+
+def test_main_dispatches_report_and_audit_commands(monkeypatch: pytest.MonkeyPatch) -> None:
+    from logtracer_extractors.cli import main
+
+    captured: dict[str, object] = {}
+
+    def fake_report(argv: list[str] | None = None) -> int:
+        captured["report"] = argv
+        return 0
+
+    def fake_tools(argv: list[str] | None = None) -> int:
+        captured["tools"] = argv
+        return 0
+
+    def fake_kb(argv: list[str] | None = None) -> int:
+        captured["kb"] = argv
+        return 0
+
+    monkeypatch.setattr("logtracer_extractors.scripts.diagnostic_report.main", fake_report)
+    monkeypatch.setattr("logtracer_extractors.scripts.toolcall_audit.main", fake_tools)
+    monkeypatch.setattr("logtracer_extractors.scripts.kb_tool_audit.main", fake_kb)
+
+    assert (
+        main(
+            [
+                "report",
+                "/tmp/session-dir",
+                "--reported-symptom",
+                "AIR answered wrong",
+            ]
+        )
+        == 0
+    )
+    assert main(["audit", "tools", "/tmp/session-dir", "--format", "json"]) == 0
+    assert main(["audit", "kb", "/tmp/session-dir"]) == 0
+
+    assert captured["report"] == [
+        "/tmp/session-dir",
+        "--format",
+        "markdown",
+        "--lang",
+        "zh",
+        "--reported-symptom",
+        "AIR answered wrong",
+    ]
+    assert captured["tools"] == ["/tmp/session-dir", "--format", "json"]
+    assert captured["kb"] == ["/tmp/session-dir", "--tool", "air_searchCompanyKnowledgeBase"]
 
 
 def test_run_discovery_command_writes_expected_output_files(
