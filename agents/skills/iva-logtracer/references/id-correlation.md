@@ -11,6 +11,7 @@ Use this reference when moving from one service's logs to another.
 | `nca` | Nova Conversation Adapter | `request_id`, `conversationId` |
 | `aig` | AI Gateway | `request_id` |
 | `gmg` | Generative Model Gateway | `log_context_RCRequestId` |
+| `agw` | Platform Agent Gateway | `request_id` |
 | `cprc_srs` | Speech recognition service | `srs_session_id` |
 | `cprc_sgs` | Speech generation service | `sgs_session_id` |
 
@@ -38,6 +39,8 @@ conversationId <--------------------------------------------+
            +--> aig (request_id)
            |
            +--> gmg (log_context_RCRequestId from request_id)
+           |
+           +--> agw (request_id)
 ```
 
 ## Index Patterns
@@ -49,5 +52,6 @@ conversationId <--------------------------------------------+
 | `nca` | `*:*-logs-nca-*` |
 | `aig` | `*:*-logs-air_ai_gateway-*` |
 | `gmg` | `*:*-logs-air_gmg-*` |
+| `agw` | `*:*-logs-agw-*` |
 | `cprc_srs` | `*:*-logs-cprc*` with `srs_session_id` filtering |
 | `cprc_sgs` | `*:*-logs-cprc*` with `sgs_session_id` filtering |
