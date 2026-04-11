@@ -1,0 +1,59 @@
+# Kibana Log Query Tools Configuration
+# 配置说明见下方注释
+
+# Elasticsearch 连接设置
+elasticsearch:
+  # 支持环境变量，格式: ${VAR_NAME}
+  url: "${KIBANA_ES_URL}"
+  auth:
+    username: "${KIBANA_USERNAME}"
+    password: "${KIBANA_PASSWORD}"
+
+# 默认索引设置
+index:
+  default: "${KIBANA_INDEX:-*:*-logs-air_assistant_runtime-*}"
+  # 时间字段名
+  time_field: "@timestamp"
+
+# 搜索设置
+search:
+  # 默认返回条数
+  default_size: 100
+  # 最大返回条数
+  max_size: 10000
+  # 默认时间范围
+  default_time_range: "1h"
+
+# 输出设置
+output:
+  # 默认输出目录
+  dir: "${KIBANA_OUTPUT_DIR:-./output}"
+  # 默认格式: table, json, markdown
+  format: "table"
+
+# 预定义查询
+queries:
+  # 最近错误
+  recent_errors: "level:ERROR OR level:error"
+  # 最近警告
+  recent_warnings: "level:WARN OR level:WARNING"
+  # 异常堆栈
+  exceptions: "exception OR stacktrace OR traceback"
+  # 所有日志
+  all: "*"
+
+# 显示字段配置
+display:
+  # 表格显示的字段
+  table_fields:
+    - "@timestamp"
+    - "level"
+    - "message"
+  # 详情显示的字段
+  detail_fields:
+    - "@timestamp"
+    - "level"
+    - "logger"
+    - "message"
+    - "trace_id"
+    - "span_id"

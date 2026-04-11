@@ -1,0 +1,21 @@
+[build-system]
+requires = ["setuptools>=61.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "cptools-kibana"
+version = "0.1.0"
+description = "Kibana/Elasticsearch client for cp-tools"
+requires-python = ">=3.10"
+dependencies = [
+    "elasticsearch>=7.0,<8.0",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=7.0",
+]
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["cptools_kibana*"]

@@ -1,0 +1,192 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Tree Timeline Renderer - Test</title>
+    <link rel="stylesheet" href="../resources/css/tree-timeline-renderer.css">
+</head>
+
+<body style="margin: 2rem; background: #f8f9fa;">
+    <h1 style="text-align: center; margin-bottom: 2rem;">Tree Timeline Renderer - Enhanced Features Test</h1>
+
+    <div id="timeline-container"></div>
+
+    <script src="../resources/js/tree-timeline-renderer.js"></script>
+    <script>
+        // Test data with TTFT
+        const testData = {
+            id: 'turn-0',
+            name: 'Turn 1: Hello, how can I help you?',
+            type: 'TRACE',
+            start_ms: 0,
+            end_ms: 2500,
+            data: {
+                turn_number: 1,
+                user_transcript: 'Hello, how can I help you?',
+                ai_response: 'I can assist you with various tasks...',
+                duration_ms: 2500,
+                ttft_ms: 450  // TTFT marker should be green (< 500ms)
+            },
+            children: [
+                {
+                    id: 'turn-0-assistant_runtime',
+                    name: '🎙️ Assistant Runtime',
+                    type: 'SPAN',
+                    start_ms: 0,
+                    end_ms: 2500,
+                    data: {
+                        component: 'assistant_runtime',
+                        event_count: 3
+                    },
+                    children: [
+                        {
+                            id: 'turn-0-assistant_runtime-event-0',
+                            name: 'gRPC Send',
+                            type: 'EVENT',
+                            start_ms: 10,
+                            end_ms: 11,
+                            data: {
+                                event_type: 'grpc_send',
+                                message: 'Sending request to NCA',
+                                timestamp: '2026-01-11T13:00:00.010Z'
+                            },
+                            children: []
+                        },
+                        {
+                            id: 'turn-0-assistant_runtime-event-1',
+                            name: 'First Response',
+                            type: 'EVENT',
+                            start_ms: 450,
+                            end_ms: 451,
+                            data: {
+                                event_type: 'first_response',
+                                message: 'Received first token from LLM',
+                                timestamp: '2026-01-11T13:00:00.450Z'
+                            },
+                            children: []
+                        },
+                        {
+                            id: 'turn-0-assistant_runtime-event-2',
+                            name: 'Response End',
+                            type: 'EVENT',
+                            start_ms: 2490,
+                            end_ms: 2491,
+                            data: {
+                                event_type: 'response_end',
+                                message: 'Response completed',
+                                timestamp: '2026-01-11T13:00:02.490Z'
+                            },
+                            children: []
+                        }
+                    ]
+                },
+                {
+                    id: 'turn-0-nca',
+                    name: '🧠 NCA',
+                    type: 'SPAN',
+                    start_ms: 15,
+                    end_ms: 2480,
+                    data: {
+                        component: 'nca',
+                        event_count: 2
+                    },
+                    children: [
+                        {
+                            id: 'turn-0-nca-event-0',
+                            name: 'LLM Request Start',
+                            type: 'EVENT',
+                            start_ms: 20,
+                            end_ms: 21,
+                            data: {
+                                event_type: 'llm_request_start',
+                                message: 'Starting LLM request to GMG',
+                                timestamp: '2026-01-11T13:00:00.020Z'
+                            },
+                            children: []
+                        },
+                        {
+                            id: 'turn-0-nca-event-1',
+                            name: 'LLM Request End',
+                            type: 'EVENT',
+                            start_ms: 2470,
+                            end_ms: 2471,
+                            data: {
+                                event_type: 'llm_request_end',
+                                message: 'LLM request completed successfully',
+                                timestamp: '2026-01-11T13:00:02.470Z'
+                            },
+                            children: []
+                        }
+                    ]
+                },
+                {
+                    id: 'turn-0-gmg',
+                    name: '⚡ GMG',
+                    type: 'GENERATION',
+                    start_ms: 25,
+                    end_ms: 2460,
+                    data: {
+                        component: 'gmg',
+                        event_count: 2
+                    },
+                    children: [
+                        {
+                            id: 'turn-0-gmg-event-0',
+                            name: 'Generation Start',
+                            type: 'EVENT',
+                            start_ms: 30,
+                            end_ms: 31,
+                            data: {
+                                event_type: 'generation_start',
+                                message: 'Starting text generation',
+                                timestamp: '2026-01-11T13:00:00.030Z'
+                            },
+                            children: []
+                        },
+                        {
+                            id: 'turn-0-gmg-event-1',
+                            name: 'Generation End',
+                            type: 'EVENT',
+                            start_ms: 2450,
+                            end_ms: 2451,
+                            data: {
+                                event_type: 'generation_end',
+                                message: 'Text generation completed',
+                                timestamp: '2026-01-11T13:00:02.450Z'
+                            },
+                            children: []
+                        }
+                    ]
+                }
+            ]
+        };
+
+        // Initialize renderer with new options
+        const renderer = new TreeTimelineRenderer({
+            container: '#timeline-container',
+            showGridLines: true,
+            performanceThresholds: {
+                ttft_excellent: 500,
+                ttft_good: 1000
+            },
+            onNodeClick: (node) => {
+                console.log('Node clicked:', node);
+            }
+        });
+
+        // Render the test data
+        renderer.render(testData);
+
+        console.log('✅ Test page loaded successfully!');
+        console.log('Features to test:');
+        console.log('1. Adaptive ruler with appropriate intervals for 2.5s duration');
+        console.log('2. Grid lines extending from ruler ticks');
+        console.log('3. Green TTFT marker at 450ms (excellent performance)');
+        console.log('4. Event details panel - click any event to see details');
+        console.log('5. Expand/collapse functionality');
+    </script>
+</body>
+
+</html>

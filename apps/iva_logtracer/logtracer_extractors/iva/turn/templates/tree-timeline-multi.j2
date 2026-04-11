@@ -1,0 +1,196 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{ title }}</title>
+    
+    <!-- Tree-Timeline Renderer CSS -->
+    {% if timeline_css %}
+    <style>{{ timeline_css }}</style>
+    {% else %}
+    <link rel="stylesheet" href="../static/tree-timeline-renderer.css">
+    {% endif %}
+    
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+            background: #f8f9fa;
+            padding: 2rem;
+            margin: 0;
+        }
+        .container {
+            max-width: 1600px;
+            margin: 0 auto;
+        }
+        .header {
+            text-align: center;
+            margin-bottom: 2rem;
+        }
+        .header h1 {
+            font-size: 2rem;
+            color: #212529;
+            margin-bottom: 0.5rem;
+        }
+        .header p {
+            color: #6c757d;
+        }
+        .metadata {
+            background: white;
+            border: 1px solid #dee2e6;
+            border-radius: 4px;
+            padding: 1rem;
+            margin-bottom: 1rem;
+        }
+        .metadata-item {
+            display: flex;
+            justify-content: space-between;
+            padding: 0.5rem 0;
+            border-bottom: 1px solid #f1f3f5;
+        }
+        .metadata-item:last-child {
+            border-bottom: none;
+        }
+        .metadata-label {
+            font-weight: 600;
+            color: #495057;
+        }
+        .metadata-value {
+            color: #6c757d;
+        }
+        .controls {
+            display: flex;
+            gap: 1rem;
+            margin-bottom: 1rem;
+            justify-content: center;
+        }
+        .btn {
+            padding: 0.5rem 1rem;
+            border: 1px solid #dee2e6;
+            border-radius: 4px;
+            background: white;
+            cursor: pointer;
+            font-size: 14px;
+        }
+        .btn:hover {
+            background: #e9ecef;
+        }
+        .turn-section {
+            margin-bottom: 3rem;
+        }
+        .turn-header {
+            background: white;
+            border: 1px solid #dee2e6;
+            border-radius: 4px;
+            padding: 1rem;
+            margin-bottom: 1rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .turn-title {
+            font-size: 1.5rem;
+            font-weight: 600;
+            color: #212529;
+        }
+        .turn-stats {
+            display: flex;
+            gap: 2rem;
+        }
+        .stat-item {
+            text-align: center;
+        }
+        .stat-label {
+            font-size: 0.75rem;
+            color: #6c757d;
+            text-transform: uppercase;
+        }
+        .stat-value {
+            font-size: 1.25rem;
+            font-weight: 600;
+            color: #212529;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>{{ title }}</h1>
+            {% if description %}
+            <p>{{ description }}</p>
+            {% endif %}
+        </div>
+
+        {% if metadata %}
+        <div class="metadata">
+            {% for key, value in metadata.items() %}
+            <div class="metadata-item">
+                <span class="metadata-label">{{ key }}</span>
+                <span class="metadata-value">{{ value }}</span>
+            </div>
+            {% endfor %}
+        </div>
+        {% endif %}
+
+        <div class="controls">
+            <button class="btn" onclick="expandAll()">Expand All</button>
+            <button class="btn" onclick="collapseAll()">Collapse All</button>
+        </div>
+
+        {% for trace_data in trace_data_list %}
+        <div class="turn-section">
+            <div class="turn-header">
+                <div class="turn-title">{{ trace_data.name }}</div>
+                <div class="turn-stats">
+                    <div class="stat-item">
+                        <div class="stat-label">Duration</div>
+                        <div class="stat-value">{{ "%.2f"|format(trace_data.end_ms) }}ms</div>
+                    </div>
+                    {% if trace_data.data.ttft_ms %}
+                    <div class="stat-item">
+                        <div class="stat-label">TTFT</div>
+                        <div class="stat-value">{{ "%.2f"|format(trace_data.data.ttft_ms) }}ms</div>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+            <div id="timeline-{{ loop.index }}"></div>
+        </div>
+        {% endfor %}
+    </div>
+
+    <!-- Tree-Timeline Renderer JS -->
+    {% if timeline_js %}
+    <script>{{ timeline_js }}</script>
+    {% else %}
+    <script src="../static/tree-timeline-renderer.js"></script>
+    {% endif %}
+    
+    <script>
+        // Trace data from Jinja2
+        const traceDataList = {{ trace_data_list | tojson }};
+        const renderers = [];
+        
+        // Initialize renderer for each turn
+        traceDataList.forEach((traceData, index) => {
+            const renderer = new TreeTimelineRenderer({
+                container: `#timeline-${index + 1}`,
+                onNodeClick: (node) => {
+                    console.log('Node clicked:', node);
+                }
+            });
+            renderer.render(traceData);
+            renderers.push(renderer);
+        });
+        
+        // Global expand/collapse functions
+        function expandAll() {
+            renderers.forEach(r => r.expandAll());
+        }
+        
+        function collapseAll() {
+            renderers.forEach(r => r.collapseAll());
+        }
+    </script>
+</body>
+</html>

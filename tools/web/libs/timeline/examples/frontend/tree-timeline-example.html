@@ -1,0 +1,260 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Tree-Timeline Renderer - Langfuse-inspired</title>
+
+    <!-- Include Tree-Timeline Renderer CSS -->
+    <link rel="stylesheet" href="../../cptools_web/resources/css/tree-timeline-renderer.css">
+
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Inter', sans-serif;
+            background: #f8f9fa;
+            padding: 2rem;
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+
+        .header {
+            text-align: center;
+            margin-bottom: 2rem;
+        }
+
+        .header h1 {
+            font-size: 2rem;
+            font-weight: 700;
+            color: #212529;
+            margin-bottom: 0.5rem;
+        }
+
+        .header p {
+            color: #6c757d;
+            font-size: 1rem;
+        }
+
+        .controls {
+            display: flex;
+            gap: 1rem;
+            margin-bottom: 1rem;
+            justify-content: center;
+        }
+
+        .btn {
+            padding: 0.5rem 1rem;
+            border: 1px solid #dee2e6;
+            border-radius: 4px;
+            background: white;
+            color: #495057;
+            font-size: 14px;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .btn:hover {
+            background: #e9ecef;
+        }
+
+        #timeline-container {
+            /* Timeline will be rendered here */
+        }
+    </style>
+</head>
+
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🌳 Tree-Timeline Renderer</h1>
+            <p>Langfuse-inspired hierarchical trace visualization</p>
+        </div>
+
+        <div class="controls">
+            <button class="btn" onclick="renderer.expandAll()">Expand All</button>
+            <button class="btn" onclick="renderer.collapseAll()">Collapse All</button>
+        </div>
+
+        <div id="timeline-container"></div>
+    </div>
+
+    <!-- Include Tree-Timeline Renderer JS -->
+    <script src="../../cptools_web/resources/js/tree-timeline-renderer.js"></script>
+
+    <script>
+        // Sample trace data (Langfuse-style)
+        const traceData = {
+            id: 'trace-1',
+            name: 'RunnableLambda',
+            type: 'TRACE',
+            start_ms: 0,
+            end_ms: 5500,
+            children: [
+                {
+                    id: 'span-1',
+                    name: 'RunnableLambda',
+                    type: 'SPAN',
+                    start_ms: 0,
+                    end_ms: 880,
+                    children: [
+                        {
+                            id: 'span-1-1',
+                            name: 'RunnableSequence',
+                            type: 'SPAN',
+                            start_ms: 2,
+                            end_ms: 880,
+                            children: [
+                                {
+                                    id: 'span-1-1-1',
+                                    name: 'ChatPromptTemplate',
+                                    type: 'SPAN',
+                                    start_ms: 5,
+                                    end_ms: 8,
+                                    children: []
+                                },
+                                {
+                                    id: 'gen-1-1-2',
+                                    name: 'ChatOpenAI',
+                                    type: 'GENERATION',
+                                    start_ms: 10,
+                                    end_ms: 870,
+                                    children: []
+                                }
+                            ]
+                        }
+                    ]
+                },
+                {
+                    id: 'span-2',
+                    name: '__start__',
+                    type: 'SPAN',
+                    start_ms: 1,
+                    end_ms: 17,
+                    children: [
+                        {
+                            id: 'span-2-1',
+                            name: 'ChannelWrite<...>',
+                            type: 'SPAN',
+                            start_ms: 4,
+                            end_ms: 7,
+                            children: []
+                        },
+                        {
+                            id: 'span-2-2',
+                            name: 'Branch<__start__>',
+                            type: 'SPAN',
+                            start_ms: 14,
+                            end_ms: 16,
+                            children: []
+                        }
+                    ]
+                },
+                {
+                    id: 'span-3',
+                    name: 'create-appointment-gpt-4.1-node',
+                    type: 'SPAN',
+                    start_ms: 21,
+                    end_ms: 5355,
+                    children: [
+                        {
+                            id: 'span-3-1',
+                            name: 'ChatPromptTemplate',
+                            type: 'SPAN',
+                            start_ms: 42,
+                            end_ms: 56,
+                            children: []
+                        },
+                        {
+                            id: 'span-3-2',
+                            name: 'RunnableLambda',
+                            type: 'SPAN',
+                            start_ms: 65,
+                            end_ms: 5155,
+                            children: [
+                                {
+                                    id: 'gen-3-2-1',
+                                    name: 'ChatOpenAI',
+                                    type: 'GENERATION',
+                                    start_ms: 74,
+                                    end_ms: 5150,
+                                    children: []
+                                }
+                            ]
+                        },
+                        {
+                            id: 'span-3-3',
+                            name: 'ChannelWrite<...>',
+                            type: 'SPAN',
+                            start_ms: 5156,
+                            end_ms: 5161,
+                            children: []
+                        },
+                        {
+                            id: 'span-3-4',
+                            name: 'Branch<create-appointment-gpt-4.1-node>',
+                            type: 'SPAN',
+                            start_ms: 5165,
+                            end_ms: 5170,
+                            children: []
+                        }
+                    ]
+                },
+                {
+                    id: 'span-4',
+                    name: 'create-appointment-gpt-4.1-node_tools',
+                    type: 'SPAN',
+                    start_ms: 5192,
+                    end_ms: 5525,
+                    children: [
+                        {
+                            id: 'span-4-1',
+                            name: 'CallTransfer',
+                            type: 'SPAN',
+                            start_ms: 5193,
+                            end_ms: 5523,
+                            children: []
+                        },
+                        {
+                            id: 'span-4-2',
+                            name: 'ChannelWrite<...>',
+                            type: 'SPAN',
+                            start_ms: 5330,
+                            end_ms: 5332,
+                            children: []
+                        },
+                        {
+                            id: 'span-4-3',
+                            name: 'Branch<create-appointment-gpt-4.1-node_tools>',
+                            type: 'SPAN',
+                            start_ms: 5333,
+                            end_ms: 5343,
+                            children: []
+                        }
+                    ]
+                }
+            ]
+        };
+
+        // Initialize renderer
+        const renderer = new TreeTimelineRenderer({
+            container: '#timeline-container',
+            onNodeClick: (node) => {
+                console.log('Node clicked:', node);
+            }
+        });
+
+        // Render trace
+        renderer.render(traceData);
+    </script>
+</body>
+
+</html>

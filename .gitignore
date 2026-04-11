@@ -1,0 +1,14 @@
+.DS_Store
+__pycache__/
+.pytest_cache/
+.venv/
+*.pyc
+*.pyo
+*.pyd
+*.egg-info/
+build/
+dist/
+apps/iva_logtracer/output/
+apps/iva_logtracer/.env
+apps/iva_logtracer/.env.lab
+apps/iva_logtracer/.env.production

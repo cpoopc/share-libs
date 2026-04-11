@@ -1,0 +1,174 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>User Login Flow Trace</title>
+    <link rel="stylesheet" href="../../cptools_web/resources/css/tree-timeline-renderer.css">
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+            background: #f8f9fa;
+            padding: 2rem;
+            margin: 0;
+        }
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+        .header {
+            text-align: center;
+            margin-bottom: 2rem;
+        }
+        .header h1 {
+            font-size: 2rem;
+            color: #212529;
+            margin-bottom: 0.5rem;
+        }
+        .metadata {
+            background: white;
+            border: 1px solid #dee2e6;
+            border-radius: 4px;
+            padding: 1rem;
+            margin-bottom: 1rem;
+        }
+        .metadata-item {
+            display: flex;
+            justify-content: space-between;
+            padding: 0.5rem 0;
+            border-bottom: 1px solid #f1f3f5;
+        }
+        .metadata-item:last-child {
+            border-bottom: none;
+        }
+        .metadata-label {
+            font-weight: 600;
+            color: #495057;
+        }
+        .metadata-value {
+            color: #6c757d;
+        }
+        .controls {
+            display: flex;
+            gap: 1rem;
+            margin-bottom: 1rem;
+            justify-content: center;
+        }
+        .btn {
+            padding: 0.5rem 1rem;
+            border: 1px solid #dee2e6;
+            border-radius: 4px;
+            background: white;
+            cursor: pointer;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>User Login Flow Trace</h1>
+        </div>
+
+        <div class="metadata"><div class="metadata-item"><span class="metadata-label">User ID</span><span class="metadata-value">user_12345</span></div>
+<div class="metadata-item"><span class="metadata-label">Timestamp</span><span class="metadata-value">2026-01-11 01:30:00</span></div>
+<div class="metadata-item"><span class="metadata-label">Duration</span><span class="metadata-value">3.5s</span></div>
+<div class="metadata-item"><span class="metadata-label">Status</span><span class="metadata-value">Success</span></div></div>
+
+        <div class="controls">
+            <button class="btn" onclick="renderer.expandAll()">Expand All</button>
+            <button class="btn" onclick="renderer.collapseAll()">Collapse All</button>
+        </div>
+
+        <div id="timeline-container"></div>
+    </div>
+
+    <script src="../../cptools_web/resources/js/tree-timeline-renderer.js"></script>
+    <script>
+        const traceData = {
+  "id": "trace-1",
+  "name": "User Login Flow",
+  "type": "TRACE",
+  "start_ms": 0,
+  "end_ms": 3500,
+  "children": [
+    {
+      "id": "span-1",
+      "name": "Validate Credentials",
+      "type": "SPAN",
+      "start_ms": 0,
+      "end_ms": 1200,
+      "children": [
+        {
+          "id": "span-1-1",
+          "name": "Hash Password",
+          "type": "SPAN",
+          "start_ms": 10,
+          "end_ms": 500,
+          "children": []
+        },
+        {
+          "id": "span-1-2",
+          "name": "Query Database",
+          "type": "SPAN",
+          "start_ms": 520,
+          "end_ms": 1180,
+          "children": []
+        }
+      ]
+    },
+    {
+      "id": "span-2",
+      "name": "Create Session",
+      "type": "SPAN",
+      "start_ms": 1250,
+      "end_ms": 2100,
+      "children": [
+        {
+          "id": "gen-2-1",
+          "name": "Generate Token",
+          "type": "GENERATION",
+          "start_ms": 1260,
+          "end_ms": 2080,
+          "children": []
+        }
+      ]
+    },
+    {
+      "id": "span-3",
+      "name": "Update User Profile",
+      "type": "SPAN",
+      "start_ms": 2150,
+      "end_ms": 3450,
+      "children": [
+        {
+          "id": "span-3-1",
+          "name": "Fetch User Data",
+          "type": "SPAN",
+          "start_ms": 2160,
+          "end_ms": 2800,
+          "children": []
+        },
+        {
+          "id": "span-3-2",
+          "name": "Update Last Login",
+          "type": "SPAN",
+          "start_ms": 2850,
+          "end_ms": 3420,
+          "children": []
+        }
+      ]
+    }
+  ]
+};
+        
+        const renderer = new TreeTimelineRenderer({
+            container: '#timeline-container',
+            onNodeClick: (node) => {
+                console.log('Node clicked:', node);
+            }
+        });
+        
+        renderer.render(traceData);
+    </script>
+</body>
+</html>

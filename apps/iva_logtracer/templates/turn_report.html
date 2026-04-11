@@ -1,0 +1,1776 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>IVA Voice Call Analysis - Premium Report</title>
+
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link
+        href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap"
+        rel="stylesheet">
+
+    <!-- Chart.js -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+
+    <style>
+        /* ============================================
+           CSS Variables & Theme System
+           ============================================ */
+        :root {
+            /* Modern Color Palette - Light Theme */
+            --color-primary: hsl(250, 84%, 54%);
+            --color-primary-light: hsl(250, 84%, 64%);
+            --color-primary-dark: hsl(250, 84%, 44%);
+            --color-secondary: hsl(280, 70%, 60%);
+            --color-accent: hsl(340, 82%, 52%);
+
+            --color-success: hsl(142, 71%, 45%);
+            --color-warning: hsl(38, 92%, 50%);
+            --color-danger: hsl(0, 84%, 60%);
+            --color-info: hsl(199, 89%, 48%);
+
+            --color-bg-primary: hsl(220, 26%, 97%);
+            --color-bg-secondary: hsl(0, 0%, 100%);
+            --color-bg-tertiary: hsl(220, 20%, 95%);
+
+            --color-text-primary: hsl(220, 26%, 14%);
+            --color-text-secondary: hsl(220, 16%, 36%);
+            --color-text-tertiary: hsl(220, 13%, 54%);
+
+            --color-border: hsl(220, 13%, 91%);
+            --color-border-light: hsl(220, 13%, 95%);
+
+            --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+            --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+            --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+            --shadow-xl: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+
+            --radius-sm: 0.375rem;
+            --radius-md: 0.5rem;
+            --radius-lg: 0.75rem;
+            --radius-xl: 1rem;
+
+            --transition-fast: 150ms cubic-bezier(0.4, 0, 0.2, 1);
+            --transition-base: 200ms cubic-bezier(0.4, 0, 0.2, 1);
+            --transition-slow: 300ms cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        /* Dark Theme */
+        [data-theme="dark"] {
+            --color-primary: hsl(250, 84%, 64%);
+            --color-primary-light: hsl(250, 84%, 74%);
+            --color-primary-dark: hsl(250, 84%, 54%);
+
+            --color-bg-primary: hsl(220, 26%, 10%);
+            --color-bg-secondary: hsl(220, 26%, 14%);
+            --color-bg-tertiary: hsl(220, 26%, 18%);
+
+            --color-text-primary: hsl(220, 26%, 92%);
+            --color-text-secondary: hsl(220, 16%, 76%);
+            --color-text-tertiary: hsl(220, 13%, 60%);
+
+            --color-border: hsl(220, 13%, 25%);
+            --color-border-light: hsl(220, 13%, 20%);
+
+            --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.3);
+            --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.4), 0 2px 4px -1px rgba(0, 0, 0, 0.3);
+            --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.5), 0 4px 6px -2px rgba(0, 0, 0, 0.4);
+            --shadow-xl: 0 20px 25px -5px rgba(0, 0, 0, 0.6), 0 10px 10px -5px rgba(0, 0, 0, 0.5);
+        }
+
+        /* ============================================
+           Base Styles
+           ============================================ */
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        html {
+            font-size: 16px;
+            scroll-behavior: smooth;
+        }
+
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+            background: var(--color-bg-primary);
+            color: var(--color-text-primary);
+            line-height: 1.6;
+            transition: background-color var(--transition-base), color var(--transition-base);
+        }
+
+        code,
+        pre {
+            font-family: 'JetBrains Mono', 'Courier New', monospace;
+        }
+
+        /* ============================================
+           Layout
+           ============================================ */
+        .app-container {
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .app-header {
+            background: linear-gradient(135deg, var(--color-primary) 0%, var(--color-secondary) 100%);
+            color: white;
+            padding: 2.5rem 2rem;
+            box-shadow: var(--shadow-lg);
+            position: sticky;
+            top: 0;
+            z-index: 100;
+            backdrop-filter: blur(10px);
+        }
+
+        .header-content {
+            max-width: 1400px;
+            margin: 0 auto;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 2rem;
+            flex-wrap: wrap;
+        }
+
+        .header-title {
+            flex: 1;
+            min-width: 300px;
+        }
+
+        .header-title h1 {
+            font-size: 1.875rem;
+            font-weight: 700;
+            margin-bottom: 0.5rem;
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+        }
+
+        .header-meta {
+            display: flex;
+            gap: 1.5rem;
+            font-size: 0.875rem;
+            opacity: 0.95;
+            flex-wrap: wrap;
+        }
+
+        .header-meta-item {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .header-meta-item code {
+            background: rgba(255, 255, 255, 0.2);
+            padding: 0.25rem 0.625rem;
+            border-radius: var(--radius-sm);
+            font-size: 0.8125rem;
+            backdrop-filter: blur(10px);
+        }
+
+        .header-actions {
+            display: flex;
+            gap: 0.75rem;
+            align-items: center;
+        }
+
+        .btn {
+            padding: 0.625rem 1.25rem;
+            border: none;
+            border-radius: var(--radius-md);
+            font-size: 0.875rem;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all var(--transition-base);
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+            text-decoration: none;
+        }
+
+        .btn-primary {
+            background: white;
+            color: var(--color-primary);
+        }
+
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: var(--shadow-lg);
+        }
+
+        .btn-ghost {
+            background: rgba(255, 255, 255, 0.15);
+            color: white;
+            backdrop-filter: blur(10px);
+        }
+
+        .btn-ghost:hover {
+            background: rgba(255, 255, 255, 0.25);
+        }
+
+        .btn-icon {
+            width: 2.5rem;
+            height: 2.5rem;
+            padding: 0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 50%;
+        }
+
+        .main-content {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 2rem;
+            width: 100%;
+            flex: 1;
+        }
+
+        /* ============================================
+           Search Bar
+           ============================================ */
+        .search-container {
+            margin-bottom: 2rem;
+            position: relative;
+        }
+
+        .search-input {
+            width: 100%;
+            padding: 1rem 1rem 1rem 3rem;
+            border: 2px solid var(--color-border);
+            border-radius: var(--radius-lg);
+            background: var(--color-bg-secondary);
+            color: var(--color-text-primary);
+            font-size: 0.9375rem;
+            transition: all var(--transition-base);
+        }
+
+        .search-input:focus {
+            outline: none;
+            border-color: var(--color-primary);
+            box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.1);
+        }
+
+        .search-icon {
+            position: absolute;
+            left: 1rem;
+            top: 50%;
+            transform: translateY(-50%);
+            color: var(--color-text-tertiary);
+            pointer-events: none;
+        }
+
+        /* ============================================
+           Metrics Dashboard
+           ============================================ */
+        .metrics-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+            gap: 1.5rem;
+            margin-bottom: 2.5rem;
+        }
+
+        .metric-card {
+            background: var(--color-bg-secondary);
+            border-radius: var(--radius-xl);
+            padding: 1.75rem;
+            box-shadow: var(--shadow-md);
+            transition: all var(--transition-base);
+            border: 1px solid var(--color-border-light);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .metric-card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 4px;
+            background: linear-gradient(90deg, var(--color-primary), var(--color-secondary));
+            opacity: 0;
+            transition: opacity var(--transition-base);
+        }
+
+        .metric-card:hover {
+            transform: translateY(-4px);
+            box-shadow: var(--shadow-lg);
+        }
+
+        .metric-card:hover::before {
+            opacity: 1;
+        }
+
+        .metric-label {
+            font-size: 0.8125rem;
+            color: var(--color-text-tertiary);
+            font-weight: 500;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            margin-bottom: 0.75rem;
+        }
+
+        .metric-value {
+            font-size: 2.25rem;
+            font-weight: 700;
+            color: var(--color-text-primary);
+            line-height: 1;
+            margin-bottom: 0.5rem;
+        }
+
+        .metric-unit {
+            font-size: 1rem;
+            color: var(--color-text-secondary);
+            font-weight: 400;
+            margin-left: 0.25rem;
+        }
+
+        .metric-trend {
+            font-size: 0.8125rem;
+            color: var(--color-text-tertiary);
+            display: flex;
+            align-items: center;
+            gap: 0.375rem;
+            margin-top: 0.625rem;
+        }
+
+        .metric-trend.positive {
+            color: var(--color-success);
+        }
+
+        .metric-trend.negative {
+            color: var(--color-danger);
+        }
+
+        /* ============================================
+           Tabs
+           ============================================ */
+        .tabs-container {
+            margin-bottom: 2rem;
+        }
+
+        .tabs-nav {
+            display: flex;
+            gap: 0.5rem;
+            border-bottom: 2px solid var(--color-border);
+            margin-bottom: 2rem;
+            overflow-x: auto;
+            scrollbar-width: thin;
+        }
+
+        .tab-button {
+            padding: 1rem 1.5rem;
+            border: none;
+            background: transparent;
+            color: var(--color-text-secondary);
+            font-size: 0.9375rem;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all var(--transition-base);
+            border-bottom: 3px solid transparent;
+            white-space: nowrap;
+            position: relative;
+        }
+
+        .tab-button:hover {
+            color: var(--color-text-primary);
+            background: var(--color-bg-tertiary);
+        }
+
+        .tab-button.active {
+            color: var(--color-primary);
+            border-bottom-color: var(--color-primary);
+        }
+
+        .tab-content {
+            display: none;
+            animation: fadeIn var(--transition-base);
+        }
+
+        .tab-content.active {
+            display: block;
+        }
+
+        @keyframes fadeIn {
+            from {
+                opacity: 0;
+                transform: translateY(10px);
+            }
+
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        /* ============================================
+           Cards
+           ============================================ */
+        .card {
+            background: var(--color-bg-secondary);
+            border-radius: var(--radius-xl);
+            padding: 2rem;
+            box-shadow: var(--shadow-md);
+            margin-bottom: 2rem;
+            border: 1px solid var(--color-border-light);
+        }
+
+        .card-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 1.5rem;
+            padding-bottom: 1rem;
+            border-bottom: 2px solid var(--color-border);
+        }
+
+        .card-title {
+            font-size: 1.25rem;
+            font-weight: 600;
+            color: var(--color-text-primary);
+            display: flex;
+            align-items: center;
+            gap: 0.625rem;
+        }
+
+        .card-actions {
+            display: flex;
+            gap: 0.5rem;
+        }
+
+        /* ============================================
+           Charts
+           ============================================ */
+        .chart-container {
+            position: relative;
+            height: 350px;
+            margin: 1.5rem 0;
+        }
+
+        .chart-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(400px, 1fr));
+            gap: 2rem;
+            margin-bottom: 2rem;
+        }
+
+        /* ============================================
+           Turn List
+           ============================================ */
+        .turn-list {
+            display: flex;
+            flex-direction: column;
+            gap: 1.5rem;
+        }
+
+        .turn-item {
+            background: var(--color-bg-secondary);
+            border-radius: var(--radius-lg);
+            border: 1px solid var(--color-border);
+            overflow: hidden;
+            transition: all var(--transition-base);
+        }
+
+        .turn-item:hover {
+            box-shadow: var(--shadow-md);
+        }
+
+        .turn-header {
+            padding: 1.25rem 1.5rem;
+            background: var(--color-bg-tertiary);
+            cursor: pointer;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 1rem;
+            transition: background var(--transition-base);
+        }
+
+        .turn-header:hover {
+            background: var(--color-border-light);
+        }
+
+        .turn-header-left {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+            flex: 1;
+        }
+
+        .turn-number {
+            font-size: 1.125rem;
+            font-weight: 700;
+            color: var(--color-primary);
+            min-width: 4rem;
+        }
+
+        .turn-type-badge {
+            padding: 0.375rem 0.875rem;
+            border-radius: var(--radius-md);
+            font-size: 0.8125rem;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.025em;
+        }
+
+        .turn-type-badge.greeting {
+            background: hsl(199, 89%, 95%);
+            color: hsl(199, 89%, 38%);
+        }
+
+        .turn-type-badge.user {
+            background: hsl(142, 71%, 95%);
+            color: hsl(142, 71%, 35%);
+        }
+
+        .turn-type-badge.continued {
+            background: hsl(38, 92%, 95%);
+            color: hsl(38, 92%, 40%);
+        }
+
+        .turn-type-badge.interrupted {
+            background: hsl(0, 84%, 95%);
+            color: hsl(0, 84%, 50%);
+        }
+
+        .turn-transcript {
+            flex: 1;
+            color: var(--color-text-secondary);
+            font-size: 0.9375rem;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+
+        .turn-metrics {
+            display: flex;
+            gap: 1.5rem;
+            align-items: center;
+        }
+
+        .turn-metric {
+            display: flex;
+            flex-direction: column;
+            align-items: flex-end;
+        }
+
+        .turn-metric-label {
+            font-size: 0.75rem;
+            color: var(--color-text-tertiary);
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+        }
+
+        .turn-metric-value {
+            font-size: 1rem;
+            font-weight: 600;
+            color: var(--color-text-primary);
+        }
+
+        .turn-expand-icon {
+            color: var(--color-text-tertiary);
+            transition: transform var(--transition-base);
+        }
+
+        .turn-item.expanded .turn-expand-icon {
+            transform: rotate(180deg);
+        }
+
+        .turn-content {
+            max-height: 0;
+            overflow: hidden;
+            transition: max-height var(--transition-slow);
+        }
+
+        .turn-item.expanded .turn-content {
+            max-height: 5000px;
+        }
+
+        .turn-content-inner {
+            padding: 1.5rem;
+            border-top: 1px solid var(--color-border);
+        }
+
+        .turn-detail-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 1.5rem;
+            margin-bottom: 1.5rem;
+        }
+
+        .turn-detail-section {
+            background: var(--color-bg-tertiary);
+            padding: 1.25rem;
+            border-radius: var(--radius-md);
+        }
+
+        .turn-detail-title {
+            font-size: 0.875rem;
+            font-weight: 600;
+            color: var(--color-text-secondary);
+            margin-bottom: 0.75rem;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+        }
+
+        .turn-detail-content {
+            color: var(--color-text-primary);
+            font-size: 0.9375rem;
+        }
+
+        .turn-detail-content pre {
+            background: var(--color-bg-secondary);
+            padding: 1rem;
+            border-radius: var(--radius-sm);
+            overflow-x: auto;
+            font-size: 0.8125rem;
+            line-height: 1.5;
+            border: 1px solid var(--color-border);
+        }
+
+        /* ============================================
+           Timeline Visualization
+           ============================================ */
+        .timeline-wrapper {
+            margin: 1.5rem 0;
+            padding: 1.5rem;
+            background: var(--color-bg-tertiary);
+            border-radius: var(--radius-lg);
+        }
+
+        /* Tree Timeline Styles */
+        .tree-timeline-container {
+            margin: 1.5rem 0;
+        }
+
+        /* __TREE_TIMELINE_CSS__ */
+
+        /* Custom LLM Event Styles */
+        .timeline-bar.highlight {
+            filter: brightness(1.4) drop-shadow(0 0 4px rgba(0, 0, 0, 0.3));
+            z-index: 10;
+            transform: scaleY(1.2);
+        }
+
+        .timeline-bar.llm-agent {
+            background-color: #8b5cf6 !important;
+            /* Purple/Blue */
+            border-color: #7c3aed !important;
+        }
+
+        .timeline-bar.llm-filler {
+            background-color: #10b981 !important;
+            /* Green/Teal */
+            border-color: #059669 !important;
+        }
+
+        .timeline-bar.llm-chitchat {
+            background-color: #f59e0b !important;
+            /* Orange/Yellow */
+            border-color: #d97706 !important;
+        }
+
+        .timeline-bar.llm-intent {
+            background-color: #ec4899 !important;
+            /* Pink/Red */
+            border-color: #db2777 !important;
+        }
+
+        /* ============================================
+           Table Styles
+           ============================================ */
+        .data-table {
+            width: 100%;
+            border-collapse: separate;
+            border-spacing: 0;
+        }
+
+        .data-table thead th {
+            background: var(--color-bg-tertiary);
+            color: var(--color-text-secondary);
+            font-weight: 600;
+            font-size: 0.8125rem;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            padding: 1rem;
+            text-align: left;
+            border-bottom: 2px solid var(--color-border);
+        }
+
+        .data-table tbody tr {
+            transition: background var(--transition-fast);
+        }
+
+        .data-table tbody tr:hover {
+            background: var(--color-bg-tertiary);
+        }
+
+        .data-table tbody td {
+            padding: 1rem;
+            border-bottom: 1px solid var(--color-border-light);
+            color: var(--color-text-primary);
+            font-size: 0.9375rem;
+        }
+
+        /* ============================================
+           Badges & Pills
+           ============================================ */
+        .badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.375rem;
+            padding: 0.25rem 0.75rem;
+            border-radius: var(--radius-md);
+            font-size: 0.8125rem;
+            font-weight: 500;
+        }
+
+        .badge-success {
+            background: hsl(142, 71%, 95%);
+            color: hsl(142, 71%, 35%);
+        }
+
+        .badge-warning {
+            background: hsl(38, 92%, 95%);
+            color: hsl(38, 92%, 40%);
+        }
+
+        .badge-danger {
+            background: hsl(0, 84%, 95%);
+            color: hsl(0, 84%, 50%);
+        }
+
+        .badge-info {
+            background: hsl(199, 89%, 95%);
+            color: hsl(199, 89%, 38%);
+        }
+
+        /* ============================================
+           Performance Indicators
+           ============================================ */
+        .perf-indicator {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+            padding: 0.5rem 1rem;
+            border-radius: var(--radius-md);
+            font-size: 0.875rem;
+            font-weight: 500;
+        }
+
+        .perf-indicator.good {
+            background: hsl(142, 71%, 95%);
+            color: hsl(142, 71%, 35%);
+        }
+
+        .perf-indicator.warning {
+            background: hsl(38, 92%, 95%);
+            color: hsl(38, 92%, 40%);
+        }
+
+        .perf-indicator.critical {
+            background: hsl(0, 84%, 95%);
+            color: hsl(0, 84%, 50%);
+        }
+
+        .perf-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: currentColor;
+        }
+
+        /* ============================================
+           Responsive Design
+           ============================================ */
+        @media (max-width: 768px) {
+            .app-header {
+                padding: 1.5rem 1rem;
+            }
+
+            .header-content {
+                flex-direction: column;
+                align-items: flex-start;
+            }
+
+            .header-title h1 {
+                font-size: 1.5rem;
+            }
+
+            .main-content {
+                padding: 1rem;
+            }
+
+            .metrics-grid {
+                grid-template-columns: 1fr;
+            }
+
+            .chart-grid {
+                grid-template-columns: 1fr;
+            }
+
+            .turn-header {
+                flex-direction: column;
+                align-items: flex-start;
+            }
+
+            .turn-metrics {
+                width: 100%;
+                justify-content: space-between;
+            }
+
+            .turn-detail-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        /* ============================================
+           Timeline Accordion Styles
+           ============================================ */
+        .turn-accordion-item {
+            border: 1px solid var(--color-border);
+            border-radius: var(--radius-md);
+            margin-bottom: 0.5rem;
+            background: var(--color-bg-secondary);
+            overflow: hidden;
+        }
+
+        .turn-accordion-header {
+            padding: 0.75rem 1rem;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            background: var(--color-bg-secondary);
+            transition: background-color var(--transition-fast);
+            border-bottom: 1px solid transparent;
+        }
+
+        .turn-accordion-header:hover {
+            background-color: var(--color-bg-hover);
+        }
+
+        .turn-accordion-item.expanded .turn-accordion-header {
+            border-bottom-color: var(--color-border);
+            background-color: var(--color-bg-tertiary);
+        }
+
+        .turn-accordion-header .header-content {
+            display: flex;
+            align-items: center;
+            width: 100%;
+            gap: 0.625rem;
+        }
+
+        .turn-accordion-header .icon {
+            font-size: 0.8em;
+            width: 1rem;
+            color: var(--color-text-tertiary);
+            transition: transform var(--transition-fast);
+        }
+
+        .turn-accordion-header .title {
+            font-weight: 500;
+            color: var(--color-text-primary);
+        }
+
+        .turn-accordion-header .duration {
+            margin-left: auto;
+            color: var(--color-text-tertiary);
+            font-family: var(--font-mono);
+            font-size: 0.9em;
+        }
+
+        .turn-accordion-header .badge {
+            font-size: 0.75em;
+            padding: 0.125rem 0.375rem;
+            border-radius: var(--radius-sm);
+            background: var(--color-bg-tertiary);
+            color: var(--color-text-secondary);
+            border: 1px solid var(--color-border);
+        }
+
+        .turn-accordion-body {
+            background: var(--color-bg-primary);
+            padding: 0.75rem 1rem;
+        }
+
+        .turn-timeline-wrapper {
+            /* Override or reset wrapper styles if needed */
+        }
+
+        /* End Timeline Accordion Styles */
+
+        /* ============================================
+           Utilities
+           ============================================ */
+        .hidden {
+            display: none !important;
+        }
+
+        .text-muted {
+            color: var(--color-text-tertiary);
+        }
+
+        .text-center {
+            text-align: center;
+        }
+
+        .mt-1 {
+            margin-top: 0.5rem;
+        }
+
+        .mt-2 {
+            margin-top: 1rem;
+        }
+
+        .mt-3 {
+            margin-top: 1.5rem;
+        }
+
+        .mb-1 {
+            margin-bottom: 0.5rem;
+        }
+
+        .mb-2 {
+            margin-bottom: 1rem;
+        }
+
+        .mb-3 {
+            margin-bottom: 1.5rem;
+        }
+
+        /* ============================================
+           Loading & Empty States
+           ============================================ */
+        .empty-state {
+            text-align: center;
+            padding: 4rem 2rem;
+            color: var(--color-text-tertiary);
+        }
+
+        .empty-state-icon {
+            font-size: 4rem;
+            margin-bottom: 1rem;
+            opacity: 0.5;
+        }
+
+        .empty-state-text {
+            font-size: 1.125rem;
+            margin-bottom: 0.5rem;
+        }
+
+        .empty-state-subtext {
+            font-size: 0.9375rem;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="app-container">
+        <!-- Header -->
+        <header class="app-header">
+            <div class="header-content">
+                <div class="header-title">
+                    <h1>
+                        <span>🎙️</span>
+                        <span>IVA Voice Call Analysis</span>
+                    </h1>
+                    <div class="header-meta">
+                        <div class="header-meta-item">
+                            <span>Session:</span>
+                            <code id="sessionId">-</code>
+                        </div>
+                        <div class="header-meta-item">
+                            <span>Conversation:</span>
+                            <code id="conversationId">-</code>
+                        </div>
+                    </div>
+                </div>
+                <div class="header-actions">
+                    <button class="btn btn-ghost" onclick="exportReport()">
+                        <span>📥</span>
+                        <span>Export</span>
+                    </button>
+                    <button class="btn btn-icon btn-ghost" onclick="toggleTheme()" title="Toggle Dark Mode">
+                        <span id="themeIcon">🌙</span>
+                    </button>
+                </div>
+            </div>
+        </header>
+
+        <!-- Main Content -->
+        <main class="main-content">
+            <!-- Search -->
+            <div class="search-container">
+                <span class="search-icon">🔍</span>
+                <input type="text" class="search-input" id="searchInput"
+                    placeholder="Search turns, transcripts, events..." oninput="handleSearch(this.value)">
+            </div>
+
+            <!-- Metrics Dashboard -->
+            <div class="metrics-grid" id="metricsGrid"></div>
+
+            <!-- Tabs -->
+            <div class="tabs-container">
+                <div class="tabs-nav">
+                    <button class="tab-button active" onclick="switchTab('overview')">📊 Overview</button>
+                    <button class="tab-button" onclick="switchTab('timeline')">⏱️ Timeline</button>
+                    <button class="tab-button" onclick="switchTab('turns')">📝 Turns</button>
+                    <button class="tab-button" onclick="switchTab('performance')">⚡ Performance</button>
+                    <button class="tab-button" onclick="switchTab('errors')">🚨 Errors</button>
+                </div>
+
+                <!-- Overview Tab -->
+                <div id="tab-overview" class="tab-content active">
+                    <div class="card">
+                        <div class="card-header">
+                            <h2 class="card-title">📈 Performance Overview</h2>
+                        </div>
+                        <div class="chart-grid">
+                            <div class="chart-container">
+                                <canvas id="ttftChart"></canvas>
+                            </div>
+                            <div class="chart-container">
+                                <canvas id="durationChart"></canvas>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="card">
+                        <div class="card-header">
+                            <h2 class="card-title">🤖 LLM Performance</h2>
+                        </div>
+                        <div class="chart-container">
+                            <canvas id="llmChart"></canvas>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Timeline Tab -->
+                <div id="tab-timeline" class="tab-content">
+                    <div class="card">
+                        <div class="card-header">
+                            <h2 class="card-title">🌳 Call Session Timeline</h2>
+                            <div class="card-actions">
+                                <button class="btn btn-ghost" onclick="expandAllTurns()">Expand All</button>
+                                <button class="btn btn-ghost" onclick="collapseAllTurns()">Collapse All</button>
+                            </div>
+                        </div>
+                        <div id="treeTimelinesContainer"></div>
+                    </div>
+                </div>
+
+                <!-- Turns Tab -->
+                <div id="tab-turns" class="tab-content">
+                    <div class="card">
+                        <div class="card-header">
+                            <h2 class="card-title">📝 Turn Details</h2>
+                        </div>
+                        <div class="turn-list" id="turnList"></div>
+                    </div>
+                </div>
+
+                <!-- Performance Tab -->
+                <div id="tab-performance" class="tab-content">
+                    <div class="card">
+                        <div class="card-header">
+                            <h2 class="card-title">⚡ Performance Metrics</h2>
+                        </div>
+                        <div class="chart-container">
+                            <canvas id="performanceWaterfallChart"></canvas>
+                        </div>
+                    </div>
+
+                    <div class="card">
+                        <div class="card-header">
+                            <h2 class="card-title">📊 Performance Distribution</h2>
+                        </div>
+                        <table class="data-table" id="performanceTable">
+                            <thead>
+                                <tr>
+                                    <th>Turn</th>
+                                    <th>TTFT</th>
+                                    <th>Duration</th>
+                                    <th>LLM Calls</th>
+                                    <th>Status</th>
+                                </tr>
+                            </thead>
+                            <tbody></tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <!-- Errors Tab -->
+                <div id="tab-errors" class="tab-content">
+                    <div class="card" id="errorsCard">
+                        <div class="card-header">
+                            <h2 class="card-title">🚨 Errors & Warnings</h2>
+                        </div>
+                        <div id="errorsList"></div>
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <script>
+        // Report data will be injected here
+        const REPORT_DATA = __REPORT_DATA__;
+        const TREE_TIMELINE_DATA = __TREE_TIMELINE_DATA__;
+
+        // Theme management
+        function toggleTheme() {
+            const html = document.documentElement;
+            const currentTheme = html.getAttribute('data-theme');
+            const newTheme = currentTheme === 'dark' ? 'light' : 'dark';
+            html.setAttribute('data-theme', newTheme);
+            document.getElementById('themeIcon').textContent = newTheme === 'dark' ? '☀️' : '🌙';
+            localStorage.setItem('theme', newTheme);
+
+            // Update charts
+            updateChartThemes();
+        }
+
+        // Initialize theme
+        function initTheme() {
+            const savedTheme = localStorage.getItem('theme') || 'light';
+            document.documentElement.setAttribute('data-theme', savedTheme);
+            document.getElementById('themeIcon').textContent = savedTheme === 'dark' ? '☀️' : '🌙';
+        }
+
+        // Tab switching
+        function switchTab(tabName) {
+            document.querySelectorAll('.tab-button').forEach(btn => btn.classList.remove('active'));
+            document.querySelectorAll('.tab-content').forEach(content => content.classList.remove('active'));
+
+            event.target.classList.add('active');
+            document.getElementById(`tab-${tabName}`).classList.add('active');
+        }
+
+        // Search functionality
+        let searchTimeout;
+        function handleSearch(query) {
+            clearTimeout(searchTimeout);
+            searchTimeout = setTimeout(() => {
+                filterTurns(query.toLowerCase());
+            }, 300);
+        }
+
+        function filterTurns(query) {
+            const turnItems = document.querySelectorAll('.turn-item');
+            turnItems.forEach(item => {
+                const text = item.textContent.toLowerCase();
+                item.style.display = text.includes(query) ? 'block' : 'none';
+            });
+        }
+
+        // Export functionality
+        function exportReport() {
+            const dataStr = JSON.stringify(REPORT_DATA, null, 2);
+            const dataBlob = new Blob([dataStr], { type: 'application/json' });
+            const url = URL.createObjectURL(dataBlob);
+            const link = document.createElement('a');
+            link.href = url;
+            link.download = `iva-report-${REPORT_DATA.session_id || 'export'}.json`;
+            link.click();
+            URL.revokeObjectURL(url);
+        }
+
+        // Turn expansion
+        function toggleTurn(turnNumber) {
+            const turnItem = document.querySelector(`[data-turn="${turnNumber}"]`);
+            if (turnItem) {
+                turnItem.classList.toggle('expanded');
+            }
+        }
+
+        function expandAllTurns() {
+            document.querySelectorAll('.turn-item').forEach(item => {
+                item.classList.add('expanded');
+            });
+        }
+
+        function collapseAllTurns() {
+            document.querySelectorAll('.turn-item').forEach(item => {
+                item.classList.remove('expanded');
+            });
+        }
+
+        // Initialize app
+        function init() {
+            initTheme();
+            renderMetrics();
+            renderCharts();
+            renderTurns();
+            renderTreeTimelines();
+            renderPerformanceTable();
+            renderErrors();
+            updateHeader();
+        }
+
+        function updateHeader() {
+            document.getElementById('sessionId').textContent = REPORT_DATA.session_id || 'N/A';
+            document.getElementById('conversationId').textContent = REPORT_DATA.conversation_id || 'N/A';
+        }
+
+        function renderMetrics() {
+            const data = REPORT_DATA;
+            const metrics = data.metrics || {};
+
+            const metricsHtml = `
+                <div class="metric-card">
+                    <div class="metric-label">Total Turns</div>
+                    <div class="metric-value">${data.total_turns || 0}</div>
+                </div>
+                <div class="metric-card">
+                    <div class="metric-label">Total Duration</div>
+                    <div class="metric-value">
+                        ${((data.total_duration_ms || 0) / 1000).toFixed(1)}
+                        <span class="metric-unit">s</span>
+                    </div>
+                </div>
+                <div class="metric-card">
+                    <div class="metric-label">Avg Turn Duration</div>
+                    <div class="metric-value">
+                        ${((data.avg_turn_duration_ms || 0) / 1000).toFixed(1)}
+                        <span class="metric-unit">s</span>
+                    </div>
+                </div>
+                <div class="metric-card">
+                    <div class="metric-label">LLM Calls</div>
+                    <div class="metric-value">${metrics.llm_call_count || 0}</div>
+                </div>
+                <div class="metric-card">
+                    <div class="metric-label">Avg TTFT</div>
+                    <div class="metric-value">
+                        ${(metrics.avg_ttft_ms || 0).toFixed(0)}
+                        <span class="metric-unit">ms</span>
+                    </div>
+                    ${classifyTTFT(metrics.avg_ttft_ms)}
+                </div>
+                <div class="metric-card">
+                    <div class="metric-label">Interruptions</div>
+                    <div class="metric-value">${metrics.interruption_count || 0}</div>
+                </div>
+            `;
+
+            document.getElementById('metricsGrid').innerHTML = metricsHtml;
+        }
+
+        function classifyTTFT(ttft) {
+            if (!ttft) return '';
+            if (ttft < 1000) return '<div class="metric-trend positive">🟢 Excellent</div>';
+            if (ttft < 2000) return '<div class="metric-trend">🟡 Good</div>';
+            return '<div class="metric-trend negative">🔴 Needs Improvement</div>';
+        }
+
+        // Chart rendering
+        let charts = {};
+
+        function renderCharts() {
+            const turns = REPORT_DATA.turns || [];
+
+            // TTFT Chart
+            const ttftData = turns.map(t => t.ttft_ms || 0);
+            const ttftLabels = turns.map(t => `Turn ${t.turn_number}`);
+
+            charts.ttft = new Chart(document.getElementById('ttftChart'), {
+                type: 'line',
+                data: {
+                    labels: ttftLabels,
+                    datasets: [{
+                        label: 'TTFT (ms)',
+                        data: ttftData,
+                        borderColor: 'hsl(250, 84%, 54%)',
+                        backgroundColor: 'hsla(250, 84%, 54%, 0.1)',
+                        tension: 0.4,
+                        fill: true
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        title: {
+                            display: true,
+                            text: 'Time to First Token (TTFT)'
+                        },
+                        legend: {
+                            display: false
+                        }
+                    }
+                }
+            });
+
+            // Duration Chart
+            const durationData = turns.map(t => (t.duration_ms || 0) / 1000);
+
+            charts.duration = new Chart(document.getElementById('durationChart'), {
+                type: 'bar',
+                data: {
+                    labels: ttftLabels,
+                    datasets: [{
+                        label: 'Duration (s)',
+                        data: durationData,
+                        backgroundColor: 'hsl(280, 70%, 60%)',
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        title: {
+                            display: true,
+                            text: 'Turn Duration'
+                        },
+                        legend: {
+                            display: false
+                        }
+                    }
+                }
+            });
+
+            // LLM Chart
+            const llmData = {};
+            turns.forEach(turn => {
+                (turn.llm_calls || []).forEach(call => {
+                    const model = call.ai_app_name?.split('/')[0] || 'Unknown';
+                    llmData[model] = (llmData[model] || 0) + 1;
+                });
+            });
+
+            charts.llm = new Chart(document.getElementById('llmChart'), {
+                type: 'doughnut',
+                data: {
+                    labels: Object.keys(llmData),
+                    datasets: [{
+                        data: Object.values(llmData),
+                        backgroundColor: [
+                            'hsl(250, 84%, 54%)',
+                            'hsl(280, 70%, 60%)',
+                            'hsl(340, 82%, 52%)',
+                            'hsl(199, 89%, 48%)',
+                            'hsl(142, 71%, 45%)'
+                        ]
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        title: {
+                            display: true,
+                            text: 'LLM Call Distribution'
+                        }
+                    }
+                }
+            });
+
+            // Performance Waterfall
+            renderPerformanceWaterfall();
+        }
+
+        function renderPerformanceWaterfall() {
+            const turns = REPORT_DATA.turns || [];
+            const datasets = [];
+
+            // TTFT dataset
+            datasets.push({
+                label: 'TTFT',
+                data: turns.map(t => t.ttft_ms || 0),
+                backgroundColor: 'hsl(250, 84%, 54%)',
+            });
+
+            // LLM latency dataset
+            datasets.push({
+                label: 'LLM Latency',
+                data: turns.map(t => {
+                    const total = (t.llm_calls || []).reduce((sum, call) => sum + (call.request_latency_ms || 0), 0);
+                    return total;
+                }),
+                backgroundColor: 'hsl(280, 70%, 60%)',
+            });
+
+            charts.waterfall = new Chart(document.getElementById('performanceWaterfallChart'), {
+                type: 'bar',
+                data: {
+                    labels: turns.map(t => `Turn ${t.turn_number}`),
+                    datasets: datasets
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        title: {
+                            display: true,
+                            text: 'Performance Breakdown by Turn'
+                        }
+                    },
+                    scales: {
+                        x: {
+                            stacked: true
+                        },
+                        y: {
+                            stacked: true,
+                            title: {
+                                display: true,
+                                text: 'Time (ms)'
+                            }
+                        }
+                    }
+                }
+            });
+        }
+
+        function updateChartThemes() {
+            // Destroy and recreate charts with new theme
+            Object.values(charts).forEach(chart => chart.destroy());
+            renderCharts();
+        }
+
+        function renderTurns() {
+            const turns = REPORT_DATA.turns || [];
+            const html = turns.map(turn => {
+                const typeClass = turn.turn_type.includes('greeting') ? 'greeting' :
+                    turn.turn_type.includes('continued') ? 'continued' :
+                        turn.was_interrupted ? 'interrupted' : 'user';
+
+                return `
+                    <div class="turn-item" data-turn="${turn.turn_number}">
+                        <div class="turn-header" onclick="toggleTurn(${turn.turn_number})">
+                            <div class="turn-header-left">
+                                <div class="turn-number">Turn ${turn.turn_number}</div>
+                                <div class="turn-type-badge ${typeClass}">${turn.turn_type}</div>
+                                <div class="turn-transcript">${turn.user_transcript || '-'}</div>
+                            </div>
+                            <div class="turn-metrics">
+                                <div class="turn-metric">
+                                    <div class="turn-metric-label">Duration</div>
+                                    <div class="turn-metric-value">${(turn.duration_ms / 1000).toFixed(2)}s</div>
+                                </div>
+                                <div class="turn-metric">
+                                    <div class="turn-metric-label">TTFT</div>
+                                    <div class="turn-metric-value">${turn.ttft_ms ? turn.ttft_ms.toFixed(0) + 'ms' : '-'}</div>
+                                </div>
+                                <div class="turn-metric">
+                                    <div class="turn-metric-label">LLM Calls</div>
+                                    <div class="turn-metric-value">${(turn.llm_calls || []).length}</div>
+                                </div>
+                                <span class="turn-expand-icon">▼</span>
+                            </div>
+                        </div>
+                        <div class="turn-content">
+                            <div class="turn-content-inner">
+                                <div class="turn-detail-grid">
+                                    <div class="turn-detail-section">
+                                        <div class="turn-detail-title">🗣️ User Input</div>
+                                        <div class="turn-detail-content">
+                                            ${turn.user_transcript || '-'}
+                                            ${turn.user_transcript_confidence ? `<div class="text-muted mt-1">Confidence: ${turn.user_transcript_confidence.toFixed(2)}</div>` : ''}
+                                        </div>
+                                    </div>
+                                    <div class="turn-detail-section">
+                                        <div class="turn-detail-title">🤖 AI Response</div>
+                                        <div class="turn-detail-content">
+                                            ${turn.ai_response || '-'}
+                                        </div>
+                                    </div>
+                                    <div class="turn-detail-section">
+                                        <div class="turn-detail-title">⏱️ Timing</div>
+                                        <div class="turn-detail-content">
+                                            <div>Start: ${turn.start_timestamp}</div>
+                                            <div>End: ${turn.end_timestamp}</div>
+                                            <div>Duration: ${turn.duration_ms.toFixed(2)}ms</div>
+                                        </div>
+                                    </div>
+                                    <div class="turn-detail-section">
+                                        <div class="turn-detail-title">🔄 States</div>
+                                        <div class="turn-detail-content">
+                                            ${(turn.states || []).join(' → ') || '-'}
+                                        </div>
+                                    </div>
+                                </div>
+                                ${renderLLMCalls(turn.llm_calls)}
+                                ${renderToolCalls(turn.tool_calls)}
+                                <div class="tree-timeline-container" id="turn-timeline-${turn.turn_number}"></div>
+                            </div>
+                        </div>
+                    </div>
+                `;
+            }).join('');
+
+            document.getElementById('turnList').innerHTML = html;
+        }
+
+        function renderLLMCalls(llmCalls) {
+            if (!llmCalls || llmCalls.length === 0) return '';
+
+            const rows = llmCalls.map(call => `
+                <tr>
+                    <td>${call.ai_app_name || 'N/A'}</td>
+                    <td>${call.model || 'N/A'}</td>
+                    <td>${call.request_latency_ms || 0}ms</td>
+                    <td>${call.total_tokens || 0}</td>
+                </tr>
+            `).join('');
+
+            return `
+                <div class="turn-detail-section" style="grid-column: 1 / -1;">
+                    <div class="turn-detail-title">🤖 LLM Calls</div>
+                    <table class="data-table">
+                        <thead>
+                            <tr>
+                                <th>App</th>
+                                <th>Model</th>
+                                <th>Latency</th>
+                                <th>Tokens</th>
+                            </tr>
+                        </thead>
+                        <tbody>${rows}</tbody>
+                    </table>
+                </div>
+            `;
+        }
+
+        function safeJSONParse(str) {
+            if (!str) return {};
+            try {
+                return JSON.parse(str);
+            } catch (e) {
+                console.warn('Failed to parse JSON:', e);
+                return { raw: str, error: 'Invalid JSON string' };
+            }
+        }
+
+        function renderToolCalls(toolCalls) {
+            if (!toolCalls || toolCalls.length === 0) return '';
+
+            const items = toolCalls.map(tc => {
+                const statusClass = tc.status === 'success' || tc.status === 'finished' ? 'success' :
+                    tc.status === 'failed' ? 'danger' : 'info';
+
+                let inputDisplay = '';
+                if (tc.input) {
+                    const parsed = safeJSONParse(tc.input);
+                    const display = parsed.error ? tc.input : JSON.stringify(parsed, null, 2);
+                    inputDisplay = `<details class="mt-1"><summary>Input</summary><pre>${display}</pre></details>`;
+                }
+
+                let outputDisplay = '';
+                if (tc.output) {
+                    const parsed = safeJSONParse(tc.output);
+                    const display = parsed.error ? tc.output : JSON.stringify(parsed, null, 2);
+                    outputDisplay = `<details class="mt-1"><summary>Output</summary><pre>${display}</pre></details>`;
+                }
+
+                return `
+                    <div class="mb-2">
+                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.5rem;">
+                            <strong>${tc.tool_name || 'Unknown Tool'}</strong>
+                            <span class="badge badge-${statusClass}">${tc.status || 'unknown'}</span>
+                        </div>
+                        <div class="text-muted" style="font-size: 0.875rem;">
+                            Duration: ${tc.duration_ms ? tc.duration_ms.toFixed(0) + 'ms' : '-'}
+                        </div>
+                        ${inputDisplay}
+                        ${outputDisplay}
+                    </div>
+                `;
+            }).join('');
+
+            return `
+                <div class="turn-detail-section" style="grid-column: 1 / -1;">
+                    <div class="turn-detail-title">🔧 Tool Calls</div>
+                    <div class="turn-detail-content">${items}</div>
+                </div>
+            `;
+        }
+
+        window.toggleAllTimelines = function (expand) {
+            if (window.timelineRenderers) {
+                window.timelineRenderers.forEach(renderer => {
+                    if (expand) {
+                        renderer.expandAll();
+                    } else {
+                        renderer.collapseAll();
+                    }
+                });
+            }
+        };
+
+        function renderTreeTimelines() {
+            // Reset global renderers list
+            window.timelineRenderers = [];
+
+            const container = document.getElementById('treeTimelinesContainer');
+            if (!TREE_TIMELINE_DATA || TREE_TIMELINE_DATA.length === 0) {
+                container.innerHTML = '<div class="empty-state"><div class="empty-state-icon">📊</div><div class="empty-state-text">No timeline data available</div></div>';
+                return;
+            }
+
+            container.innerHTML = `
+                <div class="timeline-controls" style="margin-bottom: 1rem; display: flex; gap: 8px;">
+                    <button class="btn-xs btn-outline" onclick="window.toggleAllAccordions(true)">Expand All Turns</button>
+                    <button class="btn-xs btn-outline" onclick="window.toggleAllAccordions(false)">Collapse All Turns</button>
+                </div>
+            `;
+
+            TREE_TIMELINE_DATA.forEach((turnData, index) => {
+                const turnId = `turn-timeline-${index}`;
+
+                // Create accordion item
+                const item = document.createElement('div');
+                item.className = 'turn-accordion-item';
+                item.dataset.index = index;
+
+                // Header (Click to expand/collapse)
+                const header = document.createElement('div');
+                header.className = 'turn-accordion-header';
+                header.onclick = () => window.toggleAccordion(index);
+
+                const duration = turnData.end_ms ? (turnData.end_ms - (turnData.start_ms || 0)) : 0;
+
+                header.innerHTML = `
+                    <div class="header-content">
+                        <span class="icon">►</span>
+                        <span class="title">Turn ${turnData.name ? turnData.name : (index + 1)}</span>
+                        <span class="badge ${turnData.type ? turnData.type.toLowerCase() : ''}">${turnData.type || 'TURN'}</span>
+                        <span class="duration">${(duration / 1000).toFixed(2)}s</span>
+                    </div>
+                `;
+                item.appendChild(header);
+
+                // Body (Hidden by default)
+                const body = document.createElement('div');
+                body.className = 'turn-accordion-body';
+                body.id = `accordion-body-${index}`;
+                body.style.display = 'none'; // Collapsed by default
+
+                const timelineWrapper = document.createElement('div');
+                timelineWrapper.id = turnId;
+                timelineWrapper.className = 'turn-timeline-wrapper';
+                body.appendChild(timelineWrapper);
+
+                item.appendChild(body);
+                container.appendChild(item);
+
+                try {
+                    const renderer = new TreeTimelineRenderer({
+                        container: timelineWrapper,
+                        showDuration: true,
+                        collapsible: true,
+                        // Fix for renderer expanding root by default (we want clean look)
+                        onNodeClick: (node) => console.log('Node clicked:', node)
+                    });
+                    renderer.render(turnData);
+
+                    // Store renderer for global actions
+                    window.timelineRenderers.push(renderer);
+
+                    // Allow accessing renderer from DOM element for lazy rendering if needed later
+                    timelineWrapper._renderer = renderer;
+
+                } catch (e) {
+                    console.error('Failed to render timeline:', e);
+                    timelineWrapper.innerHTML = `<div class="perf-indicator critical">Failed to render timeline: ${e.message}</div>`;
+                }
+            });
+        }
+
+        // Accordion helper functions
+        window.toggleAccordion = function (index) {
+            const body = document.getElementById(`accordion-body-${index}`);
+            const item = body.closest('.turn-accordion-item');
+            const icon = item.querySelector('.icon');
+
+            if (body.style.display === 'none') {
+                body.style.display = 'block';
+                icon.textContent = '▼';
+                item.classList.add('expanded');
+            } else {
+                body.style.display = 'none';
+                icon.textContent = '►';
+                item.classList.remove('expanded');
+            }
+        };
+
+        window.toggleAllAccordions = function (expand) {
+            const items = document.querySelectorAll('.turn-accordion-item');
+            items.forEach((item) => {
+                const index = item.dataset.index;
+                const body = document.getElementById(`accordion-body-${index}`);
+                const icon = item.querySelector('.icon');
+
+                if (expand) {
+                    body.style.display = 'block';
+                    icon.textContent = '▼';
+                    item.classList.add('expanded');
+                } else {
+                    body.style.display = 'none';
+                    icon.textContent = '►';
+                    item.classList.remove('expanded');
+                }
+            });
+        };
+        function renderPerformanceTable() {
+            const turns = REPORT_DATA.turns || [];
+            const rows = turns.map(turn => {
+                const ttft = turn.ttft_ms || 0;
+                const perfClass = ttft < 1000 ? 'good' : ttft < 2000 ? 'warning' : 'critical';
+
+                return `
+                    <tr>
+                        <td>Turn ${turn.turn_number}</td>
+                        <td>${ttft.toFixed(0)}ms</td>
+                        <td>${(turn.duration_ms / 1000).toFixed(2)}s</td>
+                        <td>${(turn.llm_calls || []).length}</td>
+                        <td>
+                            <span class="perf-indicator ${perfClass}">
+                                <span class="perf-dot"></span>
+                                ${perfClass.charAt(0).toUpperCase() + perfClass.slice(1)}
+                            </span>
+                        </td>
+                    </tr>
+                `;
+            }).join('');
+
+            document.querySelector('#performanceTable tbody').innerHTML = rows;
+        }
+
+        function renderErrors() {
+            const errors = REPORT_DATA.errors || [];
+            const errorsCard = document.getElementById('errorsCard');
+            const errorsList = document.getElementById('errorsList');
+
+            if (errors.length === 0) {
+                errorsList.innerHTML = '<div class="empty-state"><div class="empty-state-icon">✅</div><div class="empty-state-text">No errors found</div><div class="empty-state-subtext">All turns completed successfully</div></div>';
+                return;
+            }
+
+            const html = errors.map(error => `
+                <div class="turn-detail-section mb-2">
+                    <div class="turn-detail-content" style="color: var(--color-danger);">
+                        ⚠️ ${error}
+                    </div>
+                </div>
+            `).join('');
+
+            errorsList.innerHTML = html;
+        }
+
+        // __TREE_TIMELINE_JS__
+
+        // Initialize on load
+        document.addEventListener('DOMContentLoaded', init);
+    </script>
+</body>
+
+</html>

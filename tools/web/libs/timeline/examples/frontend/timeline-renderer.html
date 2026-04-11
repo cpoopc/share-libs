@@ -1,0 +1,131 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Timeline Renderer - Example</title>
+
+    <!-- Include Timeline Renderer CSS -->
+    <link rel="stylesheet" href="../../cptools_web/resources/css/timeline-renderer.css">
+
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Inter', sans-serif;
+            background: linear-gradient(135deg, #0a0e27 0%, #1a1f3a 50%, #0f1729 100%);
+            color: #f1f5f9;
+            min-height: 100vh;
+            padding: 2rem;
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+
+        .header {
+            text-align: center;
+            margin-bottom: 3rem;
+            padding: 2rem;
+            background: rgba(255, 255, 255, 0.05);
+            backdrop-filter: blur(10px);
+            border-radius: 1rem;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .header h1 {
+            font-size: 2.5rem;
+            font-weight: 700;
+            background: linear-gradient(135deg, #6366f1, #8b5cf6);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            margin-bottom: 0.5rem;
+        }
+
+        .header p {
+            color: #94a3b8;
+            font-size: 1.1rem;
+        }
+
+        #timeline-container {
+            /* Timeline will be rendered here */
+        }
+    </style>
+</head>
+
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🎯 Timeline Renderer</h1>
+            <p>Minimal integration example</p>
+        </div>
+
+        <div id="timeline-container"></div>
+    </div>
+
+    <!-- Include Timeline Renderer JS -->
+    <script src="../../cptools_web/resources/js/timeline-renderer.js"></script>
+
+    <script>
+        // Sample data
+        const timelineData = [
+            {
+                id: 'example-1',
+                title: 'Example Timeline',
+                duration_ms: 30000,
+                tracks: [
+                    {
+                        id: 'track-1',
+                        name: '👤 User',
+                        segments: [
+                            { start_ms: 0, end_ms: 3000, label: 'Segment 1', data: { info: 'First segment' } },
+                            { start_ms: 5000, end_ms: 8000, label: 'Segment 2', data: { info: 'Second segment' } }
+                        ]
+                    },
+                    {
+                        id: 'track-2',
+                        name: '🤖 System',
+                        segments: [
+                            { start_ms: 3500, end_ms: 7500, label: 'Response 1', className: 'success' },
+                            { start_ms: 8500, end_ms: 15000, label: 'Response 2', className: 'info' }
+                        ]
+                    },
+                    {
+                        id: 'track-3',
+                        name: '🔖 Events',
+                        markers: [
+                            { position_ms: 0, label: 'Start' },
+                            { position_ms: 30000, label: 'End' }
+                        ]
+                    }
+                ]
+            }
+        ];
+
+        // Initialize renderer
+        const renderer = new TimelineRenderer({
+            container: '#timeline-container',
+            showTooltip: true,
+            enableClick: true,
+            onSegmentClick: (segment, track, timeline, event) => {
+                console.log('Segment clicked:', { segment, track, timeline });
+                alert(`Clicked: ${segment.label}\nDuration: ${((segment.end_ms - segment.start_ms) / 1000).toFixed(2)}s`);
+            },
+            onMarkerClick: (marker, track, timeline, event) => {
+                console.log('Marker clicked:', { marker, track, timeline });
+            }
+        });
+
+        // Render timelines
+        renderer.renderMultiple(timelineData);
+    </script>
+</body>
+
+</html>

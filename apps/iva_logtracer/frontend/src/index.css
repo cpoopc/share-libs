@@ -1,0 +1,12 @@
+/**
+ * IVA Log Tracer 入口样式
+ * 独立运行时：通过 main.tsx 导入，提供完整样式
+ * 被 Host 加载时：依赖 Host 的样式
+ */
+@import "@cptools/ui/styles";
+
+html,
+body,
+#root {
+    height: 100%;
+}
