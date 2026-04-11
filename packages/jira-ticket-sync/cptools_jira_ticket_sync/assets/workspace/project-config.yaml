@@ -1,0 +1,15 @@
+projects:
+  IVAS:
+    fields:
+      epic_name: customfield_11451
+      epic_link: customfield_11450
+      parent_link: customfield_15751
+      sprint: customfield_10652
+      team: customfield_28351
+    queries:
+      board_id: 7412
+      sprint_name_prefix: AIR
+      team_key: TEAM-32036
+  NOVA:
+    queries:
+      team_key: TEAM-32036

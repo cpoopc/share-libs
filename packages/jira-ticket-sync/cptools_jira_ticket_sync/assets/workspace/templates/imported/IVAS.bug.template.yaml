@@ -1,0 +1,33 @@
+manifest:
+  id: bug-template
+  kind: sprint
+  profile: IVAS
+
+defaults:
+  priority: Normal
+  assignee: Paynter.Chen
+  fields:
+    team:
+      - id: '72696'
+
+tickets:
+  - local_id: example-bug
+    jira_key: null
+    issue_type: Bug
+    summary: Replace with bug summary
+    description: |
+      Background:
+
+      Problem:
+
+      Steps to Reproduce:
+
+      Actual Behavior:
+
+      Expected Behavior:
+    epic_key: IVAS-5793
+    sprint_id: 36908
+    fields:
+      affects_customers: "Yes"
+      exist_on_production: "Yes"
+      reproducibility: Occasionally

@@ -1,0 +1,23 @@
+manifest:
+  id: story-template
+  kind: sprint
+  profile: IVAS
+
+defaults:
+  priority: Normal
+  assignee: Paynter.Chen
+  fields:
+    team:
+      - id: '72696'
+
+tickets:
+  - local_id: example-story
+    jira_key: null
+    issue_type: User Story
+    summary: Replace with story summary
+    description: Replace with story description.
+    epic_key: IVAS-5793
+    sprint_id: 36908
+    fields:
+      start_date: 2026-03-13
+      end_date: 2026-03-20

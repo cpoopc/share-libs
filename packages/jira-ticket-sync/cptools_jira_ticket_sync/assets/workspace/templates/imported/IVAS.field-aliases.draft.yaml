@@ -1,0 +1,48 @@
+field_aliases:
+  affects_customers: customfield_13250
+  aop_status: customfield_22139
+  archops_service: customfield_13659
+  bug_phase: customfield_22184
+  business_value: customfield_10423
+  closed: customfield_31352
+  committed: customfield_31650
+  details(links/os/browser): customfield_20174
+  end_date: customfield_14354
+  env_incident_description: customfield_19865
+  epic_link: customfield_11450
+  epic_name: customfield_11451
+  epic_status: customfield_11452
+  exist_on_production: customfield_10570
+  health: customfield_24922
+  iops_limit: customfield_20480
+  model: customfield_19855
+  parent_link: customfield_15751
+  participants_of_an_issue: customfield_11052
+  partition_(cl_or_p**): customfield_20481
+  pi#: customfield_32287
+  planit_verification_mode: customfield_16555
+  pt_rank: customfield_24899
+  public_summary: customfield_24772
+  rca: customfield_19867
+  reported_by_client: customfield_32323
+  reporter_department: customfield_16353
+  reporter_manager: customfield_16354
+  reporter_office: customfield_20255
+  reproducibility: customfield_10220
+  requesting_org_rank: customfield_24100
+  resolved_by: customfield_31351
+  serial_number: customfield_19364
+  severity: customfield_10530
+  sprint: customfield_10652
+  start_date: customfield_10054
+  target_end: customfield_18351
+  target_start: customfield_18350
+  team_keys: customfield_28351
+  test_recording: customfield_32321
+  time_to_resolve: customfield_28353
+  type: customfield_19359
+  version: customfield_20057
+  vm_dns_domain: customfield_20482
+
+# unresolved:
+# - customfield_17553 (no stable alias in current field schema extraction)

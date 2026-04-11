@@ -1,0 +1,20 @@
+profile:
+  id: INIT
+  project: INIT
+  defaults:
+    priority: Normal
+  managed_fields:
+    - summary
+    - description
+    - priority
+    - labels
+    - assignee
+  field_aliases:
+    business_impact: customfield_16451
+    primary_category: customfield_25750
+    product_track: customfield_27455
+    request_owner: customfield_21662
+  required_fields:
+    - summary
+    - description
+    - issue_type

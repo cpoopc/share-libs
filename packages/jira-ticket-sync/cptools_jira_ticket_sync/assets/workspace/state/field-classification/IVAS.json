@@ -1,0 +1,36 @@
+{
+  "project": "IVAS",
+  "fields": {
+    "summary": {
+      "classification": "core_business",
+      "action": "keep",
+      "confidence": 1.0,
+      "suggested_for": [
+        "Task",
+        "Bug",
+        "User Story",
+        "Epic"
+      ],
+      "reason": "Core ticket summary field."
+    },
+    "description": {
+      "classification": "core_business",
+      "action": "keep",
+      "confidence": 1.0,
+      "suggested_for": [
+        "Task",
+        "Bug",
+        "User Story",
+        "Epic"
+      ],
+      "reason": "Core ticket description field."
+    },
+    "ops_notice_infobox": {
+      "classification": "ui_noise",
+      "action": "drop",
+      "confidence": 0.99,
+      "suggested_for": [],
+      "reason": "Jira UI helper content; not a business field."
+    }
+  }
+}

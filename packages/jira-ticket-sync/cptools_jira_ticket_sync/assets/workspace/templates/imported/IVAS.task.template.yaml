@@ -1,0 +1,25 @@
+manifest:
+  id: task-template
+  kind: sprint
+  profile: IVAS
+
+defaults:
+  priority: Normal
+  assignee: Paynter.Chen
+  fields:
+    team:
+      - id: '72696'
+
+tickets:
+  - local_id: example-task
+    jira_key: null
+    issue_type: Task
+    summary: Replace with task summary
+    description: Replace with task description.
+    epic_key: IVAS-5793
+    sprint_id: 36908
+    fields: {}
+
+    # Optional:
+    # epic_key: IVAS-5793
+    # sprint_id: 36908

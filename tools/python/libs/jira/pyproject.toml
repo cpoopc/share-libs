@@ -1,0 +1,23 @@
+[build-system]
+requires = ["setuptools>=61.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "cptools-jira"
+version = "0.1.0"
+description = "Jira API client library for manifest-backed Jira tooling"
+requires-python = ">=3.10"
+dependencies = [
+    "requests>=2.28.0",
+    "cptools-common @ git+ssh://git@github.com/cpoopc/share-libs.git@main#subdirectory=tools/python/libs/common",
+]
+
+[project.optional-dependencies]
+dev = ["pytest>=7.0"]
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["cptools_jira*"]
+
+[tool.uv.sources]
+cptools-common = { path = "../common", editable = true }

@@ -1,0 +1,34 @@
+profile:
+  id: DO
+  project: DO
+  defaults:
+    priority: Normal
+    fields:
+      environment_type:
+        value: Other LAB
+      urgency:
+        value: Medium
+      impact:
+        value: "M (Medium) "
+  managed_fields:
+    - summary
+    - description
+    - priority
+    - labels
+    - assignee
+    - duedate
+  field_aliases:
+    environment_type: customfield_18562
+    environment_name: customfield_18552
+    urgency: customfield_20264
+    impact: customfield_20258
+  required_fields:
+    - summary
+    - description
+    - issue_type
+    - duedate
+    - environment_type
+    - environment_name
+    - urgency
+    - impact
+  validation: {}

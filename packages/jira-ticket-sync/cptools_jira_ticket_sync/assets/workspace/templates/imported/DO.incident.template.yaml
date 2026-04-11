@@ -1,0 +1,49 @@
+manifest:
+  id: do-incident-template
+  kind: sprint
+  profile: DO
+
+defaults:
+  priority: Normal
+  fields:
+    environment_type:
+      value: Other LAB
+    urgency:
+      value: Medium
+    impact:
+      value: "M (Medium) "
+
+tickets:
+  - local_id: example-do-incident
+    jira_key: null
+    issue_type: Incident
+    summary: Replace with incident summary
+    description: |
+      h3. *Technical Request: Investigate <service> issue in <environment>*
+
+      *1) Objective:*
+      Investigate and resolve <short problem statement>. Include the impacted service and environment.
+
+      *2) Business Value/Urgency:*
+      *Urgency: Medium.* Explain what testing, validation, or release activity is blocked.
+
+      *3) Resources Needed:*
+       * Ask DevOps/SRE to investigate the dependent infrastructure path.
+       * Ask for config, network, credential, broker, queue, or deployment verification as appropriate.
+       * Ask for remediation support if infra-side recovery or reconfiguration is needed.
+
+      *4) Observed Error:*
+      {code}
+      <paste stack trace or error log>
+      {code}
+
+      *5) Expected Result:*
+      State the healthy end state in one sentence.
+
+      *6) Reference:*
+       * Similar DO ticket: [DO-15392|https://jira.ringcentral.com/browse/DO-15392]
+       * Component: {{assistant-runtime}}
+       * Environment: {{iva stage}}
+    duedate: 2026-03-19
+    fields:
+      environment_name: iva stage

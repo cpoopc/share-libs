@@ -1,0 +1,3 @@
+display_name: IVA Jira Ticket Sync
+short_description: Use Jira ticket sync with IVA workspace defaults and example profiles.
+default_prompt: Work against the IVA-local jira-ticket-sync manifests and profiles unless told otherwise.

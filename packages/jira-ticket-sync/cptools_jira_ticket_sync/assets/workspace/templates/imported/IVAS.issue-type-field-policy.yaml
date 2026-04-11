@@ -1,0 +1,227 @@
+policy:
+  project: IVAS
+  source:
+    - IVAS-5955
+    - IVAS-6862
+    - IVAS-6609
+    - IVAS-5791
+  notes:
+    - Sample-derived draft for ticket creation guidance.
+    - Use aliases from IVAS.field-aliases.draft.yaml when promoting fields into profiles.
+    - Keep workflow status out of managed business fields.
+
+global:
+  required:
+    - summary
+    - description
+    - issue_type
+  default_values:
+    priority: Normal
+    assignee: Paynter.Chen
+    team_keys: TEAM-32036
+    labels: []
+    current_sprint_id: 36908
+    current_sprint_name: AIR2607(0323-0405)
+  usually_ignore:
+    - aop_status
+    - archops_service
+    - bug_phase
+    - business_value
+    - details(links/os/browser)
+    - env_incident_description
+    - health
+    - iops_limit
+    - model
+    - partition_(cl_or_p**)
+    - planit_verification_mode
+    - rca
+    - reported_by_client
+    - reporter_department
+    - reporter_manager
+    - reporter_office
+    - requesting_org_rank
+    - serial_number
+    - test_recording
+    - type
+    - version
+    - vm_dns_domain
+    - customfield_17553
+
+issue_types:
+  Epic:
+    required:
+      - summary
+      - description
+      - issue_type
+      - epic_name
+    recommended:
+      - assignee
+      - team_keys
+      - parent_link
+      - target_start
+      - target_end
+      - public_summary
+    optional:
+      - committed
+      - participants_of_an_issue
+      - pt_rank
+      - severity
+      - reproducibility
+      - epic_status
+    ignore_by_default:
+      - aop_status
+      - archops_service
+      - bug_phase
+      - business_value
+      - customfield_17553
+      - details(links/os/browser)
+      - env_incident_description
+      - health
+      - iops_limit
+      - model
+      - partition_(cl_or_p**)
+      - pi#
+      - planit_verification_mode
+      - rca
+      - reported_by_client
+      - reporter_department
+      - reporter_manager
+      - reporter_office
+      - requesting_org_rank
+      - serial_number
+      - test_recording
+      - type
+      - version
+      - vm_dns_domain
+
+  User Story:
+    required:
+      - summary
+      - description
+      - issue_type
+      - epic_link
+    recommended:
+      - assignee
+      - team_keys
+    optional:
+      - epic_link
+      - sprint
+      - start_date
+      - end_date
+      - participants_of_an_issue
+      - resolved_by
+      - severity
+      - closed
+    ignore_by_default:
+      - aop_status
+      - archops_service
+      - bug_phase
+      - business_value
+      - customfield_17553
+      - details(links/os/browser)
+      - env_incident_description
+      - health
+      - iops_limit
+      - model
+      - partition_(cl_or_p**)
+      - planit_verification_mode
+      - rca
+      - reported_by_client
+      - reporter_department
+      - reporter_manager
+      - reporter_office
+      - requesting_org_rank
+      - serial_number
+      - test_recording
+      - type
+      - version
+      - vm_dns_domain
+
+  Task:
+    required:
+      - summary
+      - description
+      - issue_type
+    recommended:
+      - assignee
+      - team_keys
+    optional:
+      - epic_link
+      - team_keys
+      - sprint
+      - participants_of_an_issue
+      - resolved_by
+      - severity
+    defaults:
+      priority: Normal
+      assignee: Paynter.Chen
+      team_keys: TEAM-32036
+      labels: []
+      current_sprint_id: 36908
+      current_sprint_name: AIR2607(0323-0405)
+    ignore_by_default:
+      - aop_status
+      - archops_service
+      - bug_phase
+      - business_value
+      - customfield_17553
+      - details(links/os/browser)
+      - env_incident_description
+      - health
+      - iops_limit
+      - model
+      - partition_(cl_or_p**)
+      - planit_verification_mode
+      - rca
+      - reported_by_client
+      - reporter_department
+      - reporter_manager
+      - reporter_office
+      - requesting_org_rank
+      - serial_number
+      - test_recording
+      - type
+      - version
+      - vm_dns_domain
+
+  Bug:
+    required:
+      - summary
+      - description
+      - issue_type
+      - epic_link
+    recommended:
+      - assignee
+      - team_keys
+      - affects_customers
+      - exist_on_production
+      - reproducibility
+    optional:
+      - epic_link
+      - sprint
+      - participants_of_an_issue
+      - time_to_resolve
+    ignore_by_default:
+      - aop_status
+      - archops_service
+      - bug_phase
+      - business_value
+      - customfield_17553
+      - details(links/os/browser)
+      - env_incident_description
+      - health
+      - iops_limit
+      - model
+      - partition_(cl_or_p**)
+      - planit_verification_mode
+      - rca
+      - reported_by_client
+      - reporter_department
+      - reporter_manager
+      - reporter_office
+      - requesting_org_rank
+      - serial_number
+      - test_recording
+      - type
+      - version
+      - vm_dns_domain

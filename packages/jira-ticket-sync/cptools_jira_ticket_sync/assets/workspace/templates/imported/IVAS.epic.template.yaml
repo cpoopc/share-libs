@@ -1,0 +1,24 @@
+manifest:
+  id: epic-template
+  kind: epic
+  profile: IVAS
+
+defaults:
+  priority: Normal
+  assignee: Paynter.Chen
+  fields:
+    team:
+      - id: '72696'
+
+tickets:
+  - local_id: example-epic
+    jira_key: null
+    issue_type: Epic
+    summary: Replace with epic summary
+    description: Replace with epic description.
+    fields:
+      epic_name: Replace with epic name
+      parent_link: INIT-00000
+      target_start: 2026-01-01
+      target_end: 2026-03-31
+      public_summary: Optional public summary

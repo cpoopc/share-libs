@@ -1,0 +1,18 @@
+profile:
+  id: NOVA
+  project: NOVA
+  defaults:
+    priority: Medium
+  managed_fields:
+    - summary
+    - description
+    - priority
+    - labels
+    - assignee
+  field_aliases: {}
+  required_fields:
+    - summary
+    - description
+    - issue_type
+  validation: {}
+
