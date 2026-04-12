@@ -61,10 +61,18 @@ skill_target_root() {
 install_skill_via_skills_cli() {
     local skill_name="$1"
     log "Installing skill '$skill_name' from $REPO_ROOT"
+    if [ "$DRY_RUN" -eq 1 ]; then
+        if [ -n "$SKILL_SCOPE_FLAG" ]; then
+            run_cmd npx --yes skills add "$REPO_ROOT" --skill "$skill_name" "$SKILL_SCOPE_FLAG" -y
+        else
+            run_cmd npx --yes skills add "$REPO_ROOT" --skill "$skill_name" -y
+        fi
+        return 0
+    fi
     if [ -n "$SKILL_SCOPE_FLAG" ]; then
-        run_cmd npx --yes skills add "$REPO_ROOT" --skill "$skill_name" "$SKILL_SCOPE_FLAG" -y
+        npx --yes skills add "$REPO_ROOT" --skill "$skill_name" "$SKILL_SCOPE_FLAG" -y </dev/null
     else
-        run_cmd npx --yes skills add "$REPO_ROOT" --skill "$skill_name" -y
+        npx --yes skills add "$REPO_ROOT" --skill "$skill_name" -y </dev/null
     fi
 }
 
@@ -129,19 +137,20 @@ done
 
 require_cmd npx
 
-SKILL_DIRS="$(find "$REPO_ROOT/agents/skills" -mindepth 1 -maxdepth 1 -type d -exec test -f '{}/SKILL.md' ';' -print | sort)"
-[ -n "$SKILL_DIRS" ] || die "No skills found under $REPO_ROOT/agents/skills"
+SKILL_LIST_FILE="$(mktemp "${TMPDIR:-/tmp}/share-libs-skills.XXXXXX")"
+trap 'rm -f "$SKILL_LIST_FILE"' EXIT
+find "$REPO_ROOT/agents/skills" -mindepth 1 -maxdepth 1 -type d -exec test -f '{}/SKILL.md' ';' -print | sort >"$SKILL_LIST_FILE"
+[ -s "$SKILL_LIST_FILE" ] || die "No skills found under $REPO_ROOT/agents/skills"
 
-SKILL_COUNT="$(printf '%s\n' "$SKILL_DIRS" | sed '/^$/d' | wc -l | tr -d ' ')"
+SKILL_COUNT="$(wc -l <"$SKILL_LIST_FILE" | tr -d ' ')"
 log "Found $SKILL_COUNT skills under $REPO_ROOT/agents/skills"
 
-printf '%s\n' "$SKILL_DIRS" | while IFS= read -r skill_dir; do
-    [ -n "$skill_dir" ] || continue
+while IFS= read -r skill_dir; do
     skill_name="$(basename "$skill_dir")"
     install_skill_via_skills_cli "$skill_name"
     if [ "$SKILL_INSTALL_MODE" = "symlink" ]; then
         symlink_skill_into_target "$skill_name"
     fi
-done
+done <"$SKILL_LIST_FILE"
 
 log "Skill bootstrap complete"

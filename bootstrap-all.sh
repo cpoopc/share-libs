@@ -89,18 +89,17 @@ while [ "$#" -gt 0 ]; do
     shift
 done
 
-CLI_INSTALL_SCRIPTS="
-packages/confluence-sync/install.sh
-packages/grafana-report-fetching/install.sh
-packages/iva-logtracer/install.sh
-packages/jira-ticket-sync/install.sh
-tools/python/libs/kibana/install.sh
-"
+CLI_INSTALL_SCRIPTS=(
+    packages/confluence-sync/install.sh
+    packages/grafana-report-fetching/install.sh
+    packages/iva-logtracer/install.sh
+    packages/jira-ticket-sync/install.sh
+    tools/python/libs/kibana/install.sh
+)
 
 if [ "$INSTALL_CLIS" -eq 1 ]; then
     log "Installing shared CLIs from local checkout"
-    printf '%s\n' "$CLI_INSTALL_SCRIPTS" | while IFS= read -r relative_script; do
-        [ -n "$relative_script" ] || continue
+    for relative_script in "${CLI_INSTALL_SCRIPTS[@]}"; do
         script_path="$REPO_ROOT/$relative_script"
         [ -f "$script_path" ] || die "Missing install script: $script_path"
         args=(--skip-skill)
