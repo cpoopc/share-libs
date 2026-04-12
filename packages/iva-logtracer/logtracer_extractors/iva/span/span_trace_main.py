@@ -18,6 +18,7 @@ Span Trace Main - Span 追踪主入口
 
 import argparse
 import json
+import os
 import sys
 from pathlib import Path
 from typing import Any, Dict, List
@@ -54,6 +55,17 @@ def load_logs_from_file(file_path: Path) -> Dict[str, List[Dict[str, Any]]]:
     return data
 
 
+def get_default_output_root() -> Path:
+    override = os.getenv("IVA_LOGTRACER_OUTPUT_DIR")
+    if override:
+        return Path(override).expanduser().resolve()
+
+    xdg_cache_home = os.getenv("XDG_CACHE_HOME")
+    if xdg_cache_home:
+        return Path(xdg_cache_home).expanduser().resolve() / "iva-logtracer" / "output" / "iva_session"
+    return Path.home().resolve() / ".cache" / "iva-logtracer" / "output" / "iva_session"
+
+
 def main():
     """主函数"""
     parser = argparse.ArgumentParser(
@@ -76,7 +88,12 @@ def main():
     parser.add_argument("--input", "-i", type=Path, help="Input log file (JSON)")
     parser.add_argument("--conversation-id", "--conv", help="Conversation ID (if using --input)")
     parser.add_argument("--session-id", "--sess", help="Session ID (optional)")
-    parser.add_argument("--output", "-o", type=Path, help="Output directory")
+    parser.add_argument(
+        "--output",
+        "-o",
+        type=Path,
+        help="Output directory (default: ~/.cache/iva-logtracer/output/iva_session/.../span_analysis)",
+    )
     parser.add_argument("--last", "-l", default="21d", help="Time range for Kibana query")
     parser.add_argument("--formats", "-f", nargs="+", 
                        choices=["json", "timeline", "markdown", "chrome_tracing"],
@@ -162,7 +179,7 @@ def main():
         # 生成日期前缀 (YYYYMMDD 格式)
         date_prefix = datetime.now().strftime("%Y%m%d")
 
-        default_output = Path(__file__).parent.parent.parent / "output" / "iva_session"
+        default_output = get_default_output_root()
         safe_session = (session_id or "unknown").replace("/", "_")
         safe_conv = conversation_id.replace("/", "_")
         output_dir = default_output / f"{date_prefix}_{safe_session}-{safe_conv}" / "span_analysis"

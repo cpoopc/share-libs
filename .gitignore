@@ -12,3 +12,5 @@ apps/iva_logtracer/output/
 apps/iva_logtracer/.env
 apps/iva_logtracer/.env.lab
 apps/iva_logtracer/.env.production
+packages/iva-logtracer/output/
+packages/iva-logtracer/trace_analysis.json
