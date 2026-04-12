@@ -1,0 +1,48 @@
+profiles:
+  default:
+    canonical_source_id: ""
+    aliases:
+      - default
+      - primary
+      - grafana-default
+    auth_modes:
+      - api_key
+      - basic_auth
+    fallback_to_default_env: false
+    env:
+      url: GRAFANA_URL
+      api_key: GRAFANA_API_KEY
+      username: GRAFANA_USERNAME
+      password: GRAFANA_PASSWORD
+
+  iva:
+    canonical_source_id: IVA
+    aliases:
+      - iva
+      - iva-prod
+      - prod-iva
+    auth_modes:
+      - api_key
+      - basic_auth
+    fallback_to_default_env: true
+    env:
+      url: GRAFANA_IVA_URL
+      api_key: GRAFANA_IVA_API_KEY
+      username: GRAFANA_IVA_USERNAME
+      password: GRAFANA_IVA_PASSWORD
+
+  rc:
+    canonical_source_id: RC
+    aliases:
+      - rc
+      - rc-int
+      - ringcentral
+    auth_modes:
+      - api_key
+      - basic_auth
+    fallback_to_default_env: false
+    env:
+      url: GRAFANA_RC_URL
+      api_key: GRAFANA_RC_API_KEY
+      username: GRAFANA_RC_USERNAME
+      password: GRAFANA_RC_PASSWORD

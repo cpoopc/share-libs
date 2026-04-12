@@ -1,0 +1,33 @@
+[build-system]
+requires = ["setuptools>=61.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "confluence-sync"
+version = "0.1.0"
+description = "Installable Confluence search, extract, upload, and translation CLI"
+requires-python = ">=3.10"
+dependencies = [
+    "beautifulsoup4>=4.12.0",
+    "html2text>=2025.4.15",
+    "markdown>=3.5.0",
+    "python-frontmatter>=1.0.0",
+    "cptools-common @ git+ssh://git@github.com/cpoopc/share-libs.git@main#subdirectory=tools/python/libs/common",
+    "cptools-confluence @ git+ssh://git@github.com/cpoopc/share-libs.git@main#subdirectory=tools/python/libs/confluence",
+    "cptools-translation @ git+ssh://git@github.com/cpoopc/share-libs.git@main#subdirectory=tools/python/libs/translation",
+]
+
+[project.optional-dependencies]
+dev = ["pytest>=7.0"]
+
+[project.scripts]
+confluence-sync = "cptools_confluence_sync.cli:main"
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["cptools_confluence_sync*", "extractors*", "searchers*", "uploaders*"]
+
+[tool.uv.sources]
+cptools-common = { path = "../../tools/python/libs/common", editable = true }
+cptools-confluence = { path = "../../tools/python/libs/confluence", editable = true }
+cptools-translation = { path = "../../tools/python/libs/translation", editable = true }

@@ -1,0 +1,25 @@
+[build-system]
+requires = ["setuptools>=61.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "cptools-confluence"
+version = "0.1.0"
+description = "Confluence API client and utilities for cp-tools"
+requires-python = ">=3.10"
+dependencies = [
+    "atlassian-python-api>=3.41.0",
+    "cptools-common",
+    "pyyaml>=6.0",
+]
+
+[project.optional-dependencies]
+dev = ["pytest>=7.0"]
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["cptools_confluence*"]
+
+[tool.uv.sources]
+cptools-common = { path = "../common", editable = true }
+

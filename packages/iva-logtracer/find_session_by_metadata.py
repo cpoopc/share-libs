@@ -1,22 +1,12 @@
-
-import os
 import sys
-import json
-from datetime import datetime, timedelta
-from dotenv import load_dotenv
 
-load_dotenv()
+from cptools_kibana import KibanaClient
+from logtracer_extractors.runtime import load_env_file
 
 try:
-    from cptools_kibana import KibanaClient
-except ImportError:
-    project_root = "/Users/paynter.chen/Code/ai/explore/cp-tools"
-    sys.path.append(os.path.join(project_root, "tools", "python", "libs", "kibana"))
-    try:
-        from cptools_kibana import KibanaClient
-    except ImportError:
-        print("Could not import cptools_kibana.")
-        sys.exit(1)
+    load_env_file()
+except FileNotFoundError:
+    pass
 
 def main():
     try:

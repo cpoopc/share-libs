@@ -16,7 +16,7 @@ IVA/Nova Session 日志追踪与分析工具。
 | **Audit** | KB 与 generic tool usage 审计 | `iva-logtracer audit kb|tools` |
 | **Window Latency Stats** | 聚合时间窗口内 user turn latency 统计 | `python -m logtracer_extractors.scripts.window_latency_stats` |
 
-> 💡 通用日志搜索/导出功能请使用 `kibana` 工具：`./scripts/run.sh kibana search/export`
+> 💡 通用日志搜索/导出功能请使用 `kibana` 工具：`kibana-query search/export`
 
 ## 🚀 快速开始
 

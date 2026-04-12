@@ -7,7 +7,7 @@ IVA Log Tracer extractors package
 - nova: Nova 组件 (NCA, AIG, GMG)
 - platform: Platform 组件 (AGW)
 
-注意: 通用的 Kibana 功能在 cptools-kibana 库中 (tools/python/libs/kibana)
+注意: 通用的 Kibana 功能在已安装的 `cptools-kibana` 包中
 """
 
 # 从 cptools-kibana 导入通用能力 (backward compatibility)

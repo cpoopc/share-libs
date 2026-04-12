@@ -1,19 +1,36 @@
 # share-libs
 
-Shared source repository for reusable cp-tools libraries and package-level runtimes.
+Shared source repository for reusable cp-tools libraries, package-level runtimes, and canonical shared skills.
 
-## Initial migration scope
+## Current migration scope
 
 - `tools/python/libs/common`
+- `tools/python/libs/confluence`
+- `tools/python/libs/grafana`
+- `tools/python/libs/jira`
 - `tools/python/libs/kibana`
+- `tools/python/libs/translation`
 - `tools/web/libs/timeline`
 - `packages/iva-logtracer`
+- `packages/confluence-sync`
+- `packages/grafana-report-fetching`
+- `packages/jira-ticket-sync`
+- `agents/skills/confluence`
+- `agents/skills/grafana-report-fetching`
+- `agents/skills/iva-jira-ticket-sync`
 - `agents/skills/iva-logtracer`
+- `agents/skills/jira-ticket-sync`
+- `agents/skills/kafka`
+- `agents/skills/kibana`
 
+`tools/python/libs/kibana` owns the installed `kibana-query` CLI for generic log search and export.
+`packages/confluence-sync` owns the installed `confluence-sync` CLI for Confluence search, extract, upload, and translation.
+`packages/grafana-report-fetching` owns the installed `grafana-report-fetching` CLI for Grafana profile resolution, config-driven report fetches, and daily core metrics pulls.
 `packages/iva-logtracer` owns the trace core, CLI, runners, templates, and output workflow.
 `agents/skills/iva-logtracer` is the canonical skill source and should stay
 portable: installed CLI only, no repo-relative commands.
-`cp-tools` owns the local `apps/iva_logtracer` web application shell and runtime state.
+`packages/jira-ticket-sync` owns the manifest-backed Jira sync runtime and CLI.
+`cp-tools` may still own repo-local app shells and report runners, but canonical reusable libs and skills should move here first.
 
 ## Principles
 

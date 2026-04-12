@@ -17,6 +17,23 @@ uv tool install git+ssh://git@github.com/cpoopc/share-libs.git#subdirectory=pack
 npx skills add /path/to/share-libs --skill iva-logtracer -g -y
 ```
 
+## Session Discovery
+
+Use `iva-logtracer discover` when the user does not provide a stable `sessionId`, `conversationId`, or saved trace directory and first needs candidate sessions from a time window or search filter.
+
+```bash
+iva-logtracer discover \
+  --env production \
+  --last 4h \
+  --field sessionId \
+  --value s-abc123
+
+iva-logtracer discover \
+  --env production \
+  --last 2h \
+  --query 'message:"bot not responding"'
+```
+
 ## Primary Trace Command
 
 Use `iva-logtracer trace` for any request that starts from `sessionId` or `conversationId`.
@@ -83,6 +100,7 @@ iva-logtracer report \
 
 ## Command Selection
 
+- Start with `iva-logtracer discover` when the user gives only a broad symptom, time window, or weak search clue and you need candidate sessions before tracing.
 - Start with `iva-logtracer trace` for session correlation, component coverage, and initial debugging.
 - Run `iva-logtracer init` once on a new machine to create config and cache roots.
 - Run `iva-logtracer doctor` when installation, env loading, or output paths are unclear.
@@ -103,6 +121,15 @@ iva-logtracer report \
 
 ```bash
 iva-logtracer trace s-problematic-session --env production
+```
+
+### Discover candidates before tracing
+
+```bash
+iva-logtracer discover \
+  --env production \
+  --last 2h \
+  --query 'message:"IVA not responding"'
 ```
 
 ### Check likely errors in trace output

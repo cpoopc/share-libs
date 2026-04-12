@@ -1,0 +1,100 @@
+shared_defaults:
+  in_cluster_bootstrap: iva-kafka-bootstrap:9092
+  topics:
+    messages: iva.messages
+    conversations: iva.conversations
+    notifications_request: iva.notifications.req
+    memory_events_producer: iva.events
+    assistant_events: iva.assistant.events
+  console_proto_topics:
+    - iva.messages
+    - iva.conversations
+    - iva.docs
+    - fra52.iva.docs
+    - cdg41.iva.docs
+    - iva.events
+    - fra52.iva.events
+    - cdg41.iva.events
+    - iva.assistant.events
+    - iva.notifications.req
+  consumers:
+    kafka_reader_group: iva-kafka-reader
+    memory_controller_event_group: event-consumer-group
+
+profiles:
+  stage:
+    aliases:
+      - stage
+      - iva-stage
+      - fra52
+      - fra52-stage
+      - stage-fra52
+    cluster:
+      name: fra52-c01-kbm10
+      location: fra52
+      namespace: iva-stage
+    endpoints:
+      console_url: https://kafka-console-stage-fra52.iva.int.rclabenv.com
+      external_bootstrap: kafka-bootstrap-stage-fra52.iva.int.rclabenv.com:30100
+      external_access_status: verified-open-from-current-host
+    regional_topics:
+      docs:
+        - fra52.iva.docs
+        - cdg41.iva.docs
+      events:
+        - fra52.iva.events
+        - cdg41.iva.events
+    topic_overrides:
+      memory_events_consumers:
+        - cdg41.iva.events
+    notes:
+      - Use iva.messages for persisted caller or assistant messages; iva.events is not the primary message stream.
+      - memory-controller in iva-stage consumes cdg41.iva.events in addition to producing iva.events.
+
+  cnlab01:
+    aliases:
+      - cnlab01
+      - cn-lab01
+      - iva-cn-lab01
+      - lab01
+      - dca53-cnlab01
+    cluster:
+      name: dca53-c01-kbm10
+      location: dca53
+      namespace: iva-cn-lab01
+    endpoints:
+      console_url: https://kafka-console-cn-lab01.iva.int.rclabenv.com
+      external_bootstrap: kafka-bootstrap.iva-cn-lab01.dca53.iva.rclabenv.com:30000
+      external_access_status: requires-local-network-verification
+    regional_topics:
+      docs: []
+      events: []
+    topic_overrides:
+      memory_events_consumers: []
+    notes:
+      - No environment-specific memory-controller event consumer override was found; base config leaves consumer_topics empty.
+      - The hostname resolves from this machine, but raw broker reachability still depends on the caller network.
+
+  cnlab03:
+    aliases:
+      - cnlab03
+      - cn-lab03
+      - iva-cn-lab03
+      - lab03
+      - dca53-cnlab03
+    cluster:
+      name: dca53-c01-kbm10
+      location: dca53
+      namespace: iva-cn-lab03
+    endpoints:
+      console_url: https://kafka-console-cn-lab03.iva.int.rclabenv.com
+      external_bootstrap: kafka-bootstrap.iva-cn-lab03.dca53.iva.rclabenv.com:30000
+      external_access_status: verified-open-from-current-host
+    regional_topics:
+      docs: []
+      events: []
+    topic_overrides:
+      memory_events_consumers: []
+    notes:
+      - No environment-specific memory-controller event consumer override was found; base config leaves consumer_topics empty.
+      - Use external bootstrap only when the current network path to the DCA53 lab cluster is intended.

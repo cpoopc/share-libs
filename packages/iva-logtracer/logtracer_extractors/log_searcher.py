@@ -3,7 +3,7 @@
 Kibana Log Searcher
 Re-exports from cptools-kibana for backward compatibility.
 
-注意: 通用的 Kibana 功能在 cptools-kibana 库中 (tools/python/libs/kibana)
+注意: 通用的 Kibana 功能在已安装的 `cptools-kibana` 包中
 """
 
 # Re-export from cptools-kibana

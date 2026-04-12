@@ -348,6 +348,27 @@ class KibanaClient:
         """获取匹配的索引列表"""
         result = self._request("GET", f"_cat/indices/{pattern}?format=json")
         return [idx.get("index", "") for idx in result if isinstance(idx, dict)]
+
+    def resolve_indices(self, pattern: str = "*") -> Dict[str, List[str]]:
+        """使用应用友好的 Resolve Index API 解析 index/alias/data stream。"""
+        result = self._request("GET", f"_resolve/index/{pattern}")
+        return {
+            "indices": [
+                item.get("name", "")
+                for item in result.get("indices", [])
+                if isinstance(item, dict) and item.get("name")
+            ],
+            "aliases": [
+                item.get("name", "")
+                for item in result.get("aliases", [])
+                if isinstance(item, dict) and item.get("name")
+            ],
+            "data_streams": [
+                item.get("name", "")
+                for item in result.get("data_streams", [])
+                if isinstance(item, dict) and item.get("name")
+            ],
+        }
     
     def aggregate(
         self,

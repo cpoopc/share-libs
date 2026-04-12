@@ -67,3 +67,31 @@ def test_fetch_all_hits_uses_search_after_until_last_page() -> None:
         "2026-03-18T00:00:02Z",
         "doc-2",
     ]
+
+
+def test_resolve_indices_uses_application_api(monkeypatch) -> None:
+    captured: dict[str, object] = {}
+
+    def fake_request(method: str, path: str, body: dict | None = None) -> dict:
+        captured["method"] = method
+        captured["path"] = path
+        captured["body"] = body
+        return {
+            "indices": [{"name": "logs-air_assistant_runtime-2026.04.12"}],
+            "aliases": [],
+            "data_streams": [],
+        }
+
+    client = KibanaClient(KibanaConfig(url="https://example.com", username="u", password="p"))
+    monkeypatch.setattr(client, "_request", fake_request)
+
+    resolved = client.resolve_indices("*:*-logs-air_assistant_runtime-*")
+
+    assert captured["method"] == "GET"
+    assert captured["path"] == "_resolve/index/*:*-logs-air_assistant_runtime-*"
+    assert captured["body"] is None
+    assert resolved == {
+        "indices": ["logs-air_assistant_runtime-2026.04.12"],
+        "aliases": [],
+        "data_streams": [],
+    }

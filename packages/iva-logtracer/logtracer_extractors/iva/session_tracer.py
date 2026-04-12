@@ -24,7 +24,9 @@ try:
     from ..kibana_client import KibanaClient
     from ..runtime import get_output_root
     from .ai_extractor import save_ai_analysis_files
-    from .loaders import DEFAULT_CONVERSATION_LOADERS, DEFAULT_SESSION_LOADERS
+    from .component_catalog import get_component_definition, resolve_component_names
+    from .component_diagnostics import build_component_diagnostics_map
+    from .loaders import ALL_LOADERS, DEFAULT_CONVERSATION_LOADERS, DEFAULT_SESSION_LOADERS
     from .orchestrator import SessionTraceOrchestrator
     from .trace_context import TraceContext
 except ImportError:
@@ -36,7 +38,9 @@ except ImportError:
         sys.path.insert(0, str(_kibana_dir))
 
     from extractors.iva.ai_extractor import save_ai_analysis_files
-    from extractors.iva.loaders import DEFAULT_CONVERSATION_LOADERS, DEFAULT_SESSION_LOADERS
+    from extractors.iva.component_catalog import get_component_definition, resolve_component_names
+    from extractors.iva.component_diagnostics import build_component_diagnostics_map
+    from extractors.iva.loaders import ALL_LOADERS, DEFAULT_CONVERSATION_LOADERS, DEFAULT_SESSION_LOADERS
     from extractors.iva.orchestrator import SessionTraceOrchestrator
     from extractors.iva.trace_context import TraceContext
     from extractors.kibana_client import KibanaClient
@@ -45,6 +49,7 @@ except ImportError:
 
 # 默认输出目录
 DEFAULT_OUTPUT_DIR = get_output_root()
+LOADER_CLASSES_BY_NAME = {loader_class().name: loader_class for loader_class in ALL_LOADERS}
 
 
 def get_output_dir(session_id: str, conversation_id: str) -> Path:
@@ -106,6 +111,65 @@ def is_conversation_id(id_str: str) -> bool:
     return bool(re.match(uuid_pattern, id_str))
 
 
+def build_component_coverage(
+    ctx: TraceContext,
+    component_names: List[str],
+    *,
+    resolver=None,
+    component_diagnostics: Dict[str, Dict[str, Any]] | None = None,
+) -> Dict[str, Dict[str, Any]]:
+    """Build a lightweight component coverage snapshot for saved traces."""
+    coverage: Dict[str, Dict[str, Any]] = {}
+
+    for component_name in component_names:
+        definition = get_component_definition(component_name)
+        diagnostic_entry = (component_diagnostics or {}).get(component_name)
+        if diagnostic_entry is None and resolver is not None:
+            resolution = resolver.resolve_component(component_name)
+            if hasattr(resolution, "to_dict"):
+                diagnostic_entry = resolution.to_dict()
+            else:
+                diagnostic_entry = {
+                    key: getattr(resolution, key)
+                    for key in ("status", "resolved_indices", "document_count", "error")
+                    if hasattr(resolution, key)
+                }
+
+        entry: Dict[str, Any] = {
+            "status": "unknown",
+            "resolved_indices": list(definition.index_candidates),
+        }
+        if diagnostic_entry is not None:
+            entry.update(
+                {
+                    key: value
+                    for key, value in diagnostic_entry.items()
+                    if key in {"status", "resolved_indices", "document_count", "error"}
+                }
+            )
+
+        component_logs = ctx.logs.get(component_name)
+        if component_logs is not None:
+            entry["status"] = "matched" if component_logs else "empty"
+            entry["log_count"] = len(component_logs)
+            coverage[component_name] = entry
+            continue
+
+        loader_class = LOADER_CLASSES_BY_NAME.get(component_name)
+        if loader_class is not None:
+            loader = loader_class()
+            if loader.depends_on and not ctx.has(*loader.depends_on):
+                entry["status"] = "dependency_missing"
+                entry["missing_dependencies"] = list(loader.depends_on)
+            elif loader.depends_on_any and not ctx.has_any(*loader.depends_on_any):
+                entry["status"] = "dependency_missing"
+                entry["missing_dependencies"] = list(loader.depends_on_any)
+
+        coverage[component_name] = entry
+
+    return coverage
+
+
 def main(argv: List[str] | None = None) -> int:
     """IVA Session Trace 主入口"""
     parser = argparse.ArgumentParser(
@@ -134,9 +198,14 @@ def main(argv: List[str] | None = None) -> int:
     parser.add_argument("--output", "-o", help="Output file")
     parser.add_argument("--no-save", action="store_true", help="Don't auto-save")
     parser.add_argument("--save-json", action="store_true", help="Also save trace JSON files")
+    parser.add_argument(
+        "--explain-components",
+        action="store_true",
+        help="Save component coverage metadata alongside the trace output",
+    )
 
     args = parser.parse_args(argv)
-    enabled_loaders = set(args.loaders or args.loaders_alias or [])
+    enabled_loaders = set(resolve_component_names(args.loaders or args.loaders_alias or []))
     input_id = args.id
     use_conversation_id = False
 
@@ -171,6 +240,17 @@ def main(argv: List[str] | None = None) -> int:
                 time_range=args.last,
                 enabled_loaders=enabled_loaders,
                 size=args.size,
+            )
+
+        if args.explain_components and not getattr(ctx, "component_coverage", None):
+            component_names = sorted(enabled_loaders) if enabled_loaders else sorted(DEFAULT_SESSION_LOADERS)
+            if use_conversation_id and not enabled_loaders:
+                component_names = sorted(DEFAULT_CONVERSATION_LOADERS)
+            diagnostics_map = build_component_diagnostics_map(client, component_names)
+            ctx.component_coverage = build_component_coverage(
+                ctx,
+                component_names,
+                component_diagnostics=diagnostics_map,
             )
 
         result = ctx.to_result()
@@ -229,6 +309,12 @@ def main(argv: List[str] | None = None) -> int:
             }
             with open(summary_path, "w", encoding="utf-8") as f:
                 json.dump(summary, f, indent=2, ensure_ascii=False)
+
+            if args.explain_components and result.get("component_coverage"):
+                coverage_path = output_dir / "component_coverage.json"
+                with open(coverage_path, "w", encoding="utf-8") as f:
+                    json.dump(result["component_coverage"], f, indent=2, ensure_ascii=False, default=str)
+                print("✅ component_coverage.json")
 
             # 生成 AI 分析文件
             print("\n🤖 Generating AI analysis files...")

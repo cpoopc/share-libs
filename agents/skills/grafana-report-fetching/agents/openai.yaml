@@ -1,0 +1,4 @@
+interface:
+  display_name: "Grafana Report Fetching"
+  short_description: "Resolve Grafana profiles, validate env, and run installed report-fetching commands"
+  default_prompt: "Use $grafana-report-fetching to resolve Grafana profiles, validate credentials, and run installed grafana-report-fetching CLI commands safely."

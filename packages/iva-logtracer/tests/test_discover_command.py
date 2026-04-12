@@ -64,7 +64,7 @@ def test_cli_exposes_init_doctor_report_and_audit_subcommands() -> None:
     parser = build_parser()
 
     init_args = parser.parse_args(["init", "--env", "production"])
-    doctor_args = parser.parse_args(["doctor", "--format", "json"])
+    doctor_args = parser.parse_args(["doctor", "--format", "json", "--components"])
     report_args = parser.parse_args(
         ["report", "/tmp/session-dir", "--format", "markdown", "--reported-symptom", "AIR answered wrong"]
     )
@@ -75,6 +75,7 @@ def test_cli_exposes_init_doctor_report_and_audit_subcommands() -> None:
     assert init_args.env == "production"
     assert doctor_args.command == "doctor"
     assert doctor_args.format == "json"
+    assert doctor_args.components is True
     assert report_args.command == "report"
     assert report_args.session_dirs == ["/tmp/session-dir"]
     assert report_args.reported_symptom == "AIR answered wrong"

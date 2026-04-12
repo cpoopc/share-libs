@@ -1,0 +1,353 @@
+name: iva-core-metrics-daily
+description: Daily pull of current core metrics for assistant-runtime and residual agent-service traffic.
+
+grafana_sources:
+  iva:
+    name: IVA Grafana
+    source_id: IVA
+
+metrics:
+  - key: websocket_connections_avg
+    title: Websocket connections avg
+    description: Average websocket connection count during the day.
+    service: assistant-runtime
+    source: iva
+    datasource_uid: prometheus
+    aggregation: avg
+    unit: ""
+    promql: websockets_counter{app="assistant-runtime"}
+
+  - key: websocket_error_rate
+    title: Websocket error rate
+    description: Average websocket error events per second.
+    service: assistant-runtime
+    source: iva
+    datasource_uid: prometheus
+    aggregation: avg
+    unit: ""
+    promql: sum(rate(websockets_err_count{app="assistant-runtime"}[5m]))
+
+  - key: kafka_failure_ratio
+    title: Kafka produce failure ratio
+    description: Average Kafka produce failure ratio across topics.
+    service: assistant-runtime
+    source: iva
+    datasource_uid: prometheus
+    aggregation: avg
+    unit: "%"
+    promql: 100 * (sum(rate(kafka_produced_msg_total{app="assistant-runtime",result="failed"}[5m])) / clamp_min(sum(rate(kafka_produced_msg_total{app="assistant-runtime"}[5m])), 1e-9))
+
+  - key: HTTP Success Rate
+    title: HTTP Success Rate
+    description: Weekly-aligned HTTP success rate for assistant-runtime ncahttpclient traffic.
+    service: assistant-runtime
+    source: iva
+    datasource_uid: prometheus
+    aggregation: avg
+    unit: "%"
+    promql: |
+      (
+        sum(increase(ncahttpclient_request_count_total{container="assistant-runtime", namespace=~".*", statusCode="200"}[$__range]))
+        /
+        sum(increase(ncahttpclient_request_count_total{container="assistant-runtime", namespace=~".*"}[$__range]))
+      ) * 100
+
+  - key: GRPC Success Rate
+    title: GRPC Success Rate
+    description: Weekly-aligned gRPC success rate for assistant-runtime AgentCompletion traffic.
+    service: assistant-runtime
+    source: iva
+    datasource_uid: prometheus
+    aggregation: avg
+    unit: "%"
+    promql: |
+      (
+        sum(increase(nova_request_count_total{namespace=~".*", service=~"assistant-runtime", rpc="AgentCompletion", status="OK"}[$__range]))
+        /
+        sum(increase(nova_request_count_total{namespace=~".*", service=~"assistant-runtime", rpc="AgentCompletion"}[$__range]))
+      ) * 100
+
+  - key: srs_stream_success_ratio
+    title: SRS stream success ratio
+    description: Average successful SRS terminal status ratio.
+    service: assistant-runtime
+    source: iva
+    datasource_uid: prometheus
+    aggregation: avg
+    unit: "%"
+    promql: 100 * (sum(rate(srs_streams_count_total{app="assistant-runtime",status=~"OK|CANCELLED"}[5m])) / clamp_min(sum(rate(srs_streams_count_total{app="assistant-runtime"}[5m])), 1e-9))
+
+  - key: TTFT P75 - Nova
+    title: TTFT P75 - Nova
+    description: Weekly-aligned P75 TTFT for nova first result latency.
+    service: assistant-runtime
+    source: iva
+    datasource_uid: prometheus
+    aggregation: max
+    unit: "s"
+    promql: histogram_quantile(0.75, sum by (le) (rate(agent_generate_first_result_latency_seconds_bucket{app="assistant-runtime",agent_type="nova"}[5m])))
+
+  - key: TTFT P90 - Nova
+    title: TTFT P90 - Nova
+    description: Weekly-aligned P90 TTFT for nova first result latency.
+    service: assistant-runtime
+    source: iva
+    datasource_uid: prometheus
+    aggregation: max
+    unit: "s"
+    promql: histogram_quantile(0.90, sum by (le) (rate(agent_generate_first_result_latency_seconds_bucket{app="assistant-runtime",agent_type="nova"}[5m])))
+
+  - key: TTFT P95 - Nova
+    title: TTFT P95 - Nova
+    description: Weekly-aligned P95 TTFT for nova first result latency.
+    service: assistant-runtime
+    source: iva
+    datasource_uid: prometheus
+    aggregation: max
+    unit: "s"
+    promql: histogram_quantile(0.95, sum by (le) (rate(agent_generate_first_result_latency_seconds_bucket{app="assistant-runtime",agent_type="nova"}[5m])))
+
+  - key: TTFT P75 - Filler
+    title: TTFT P75 - Filler
+    description: Weekly-aligned P75 TTFT for filler responses on nova traffic.
+    service: assistant-runtime
+    source: iva
+    datasource_uid: prometheus
+    aggregation: max
+    unit: "s"
+    promql: histogram_quantile(0.75, sum by (le) (rate(agent_ttft_by_type_latency_seconds_bucket{app="assistant-runtime",agent_type="nova",ttft_type="Filler"}[5m])))
+
+  - key: TTFT P90 - Filler
+    title: TTFT P90 - Filler
+    description: Weekly-aligned P90 TTFT for filler responses on nova traffic.
+    service: assistant-runtime
+    source: iva
+    datasource_uid: prometheus
+    aggregation: max
+    unit: "s"
+    promql: histogram_quantile(0.90, sum by (le) (rate(agent_ttft_by_type_latency_seconds_bucket{app="assistant-runtime",agent_type="nova",ttft_type="Filler"}[5m])))
+
+  - key: TTFT P95 - Filler
+    title: TTFT P95 - Filler
+    description: Weekly-aligned P95 TTFT for filler responses on nova traffic.
+    service: assistant-runtime
+    source: iva
+    datasource_uid: prometheus
+    aggregation: max
+    unit: "s"
+    promql: histogram_quantile(0.95, sum by (le) (rate(agent_ttft_by_type_latency_seconds_bucket{app="assistant-runtime",agent_type="nova",ttft_type="Filler"}[5m])))
+
+  - key: TTFT P75 - Agent
+    title: TTFT P75 - Agent
+    description: Weekly-aligned P75 TTFT for agent responses on nova traffic.
+    service: assistant-runtime
+    source: iva
+    datasource_uid: prometheus
+    aggregation: max
+    unit: "s"
+    promql: histogram_quantile(0.75, sum by (le) (rate(agent_ttft_by_type_latency_seconds_bucket{app="assistant-runtime",agent_type="nova",ttft_type="Agent"}[5m])))
+
+  - key: TTFT P90 - Agent
+    title: TTFT P90 - Agent
+    description: Weekly-aligned P90 TTFT for agent responses on nova traffic.
+    service: assistant-runtime
+    source: iva
+    datasource_uid: prometheus
+    aggregation: max
+    unit: "s"
+    promql: histogram_quantile(0.90, sum by (le) (rate(agent_ttft_by_type_latency_seconds_bucket{app="assistant-runtime",agent_type="nova",ttft_type="Agent"}[5m])))
+
+  - key: TTFT P95 - Agent
+    title: TTFT P95 - Agent
+    description: Weekly-aligned P95 TTFT for agent responses on nova traffic.
+    service: assistant-runtime
+    source: iva
+    datasource_uid: prometheus
+    aggregation: max
+    unit: "s"
+    promql: histogram_quantile(0.95, sum by (le) (rate(agent_ttft_by_type_latency_seconds_bucket{app="assistant-runtime",agent_type="nova",ttft_type="Agent"}[5m])))
+
+  - key: agent_generate_error_rate
+    title: Agent generate error rate
+    description: Average generate error events per second for nova agent traffic.
+    service: assistant-runtime
+    source: iva
+    datasource_uid: prometheus
+    aggregation: avg
+    unit: ""
+    promql: sum(rate(agent_generate_error_count_total{app="assistant-runtime",agent_type="nova"}[5m]))
+
+  - key: Tool Call Success Rate
+    title: Tool Call Success Rate
+    description: Weekly-aligned tool call success rate for nova traffic.
+    service: assistant-runtime
+    source: iva
+    datasource_uid: prometheus
+    aggregation: avg
+    unit: "%"
+    promql: |
+      (
+        sum(increase(agent_tool_result_count_total{agent_type="nova", namespace=~".*", service=~"assistant-runtime", status="SUCCESS"}[$__range]))
+        /
+        sum(increase(agent_tool_result_count_total{agent_type="nova", namespace=~".*", service=~"assistant-runtime"}[$__range]))
+      ) * 100
+
+  - key: TTFT Agent Response Rate
+    title: TTFT Agent Response Rate
+    description: Weekly-aligned agent response rate as first token on nova traffic.
+    service: assistant-runtime
+    source: iva
+    datasource_uid: prometheus
+    aggregation: avg
+    unit: "%"
+    promql: '(1 - sum(rate(agent_ttft_by_type_latency_seconds_count{namespace=~".*", service="assistant-runtime", agent_type="nova", ttft_type="Filler"}[$__rate_interval])) / sum(rate(agent_generate_first_result_latency_seconds_count{namespace=~".*", service="assistant-runtime", agent_type="nova"}[$__rate_interval]))) * 100'
+
+  - key: silence_p75
+    title: Silence P75
+    description: Peak P75 silence duration during the day.
+    service: assistant-runtime
+    source: iva
+    datasource_uid: prometheus
+    aggregation: max
+    unit: "s"
+    promql: histogram_quantile(0.75, sum by (le) (rate(silence_duration_seconds_bucket{app="assistant-runtime"}[5m])))
+
+  - key: silence_p90
+    title: Silence P90
+    description: Peak P90 silence duration during the day.
+    service: assistant-runtime
+    source: iva
+    datasource_uid: prometheus
+    aggregation: max
+    unit: "s"
+    promql: histogram_quantile(0.90, sum by (le) (rate(silence_duration_seconds_bucket{app="assistant-runtime"}[5m])))
+
+  - key: silence_p95
+    title: Silence P95
+    description: Peak P95 silence duration during the day.
+    service: assistant-runtime
+    source: iva
+    datasource_uid: prometheus
+    aggregation: max
+    unit: "s"
+    promql: histogram_quantile(0.95, sum by (le) (rate(silence_duration_seconds_bucket{app="assistant-runtime"}[5m])))
+
+  - key: nova_fallback_rate
+    title: Nova fallback rate
+    description: Average fallback ratio after Nova conversation creation failure.
+    service: assistant-runtime
+    source: iva
+    datasource_uid: prometheus
+    aggregation: avg
+    unit: "%"
+    promql: 100 * (sum(rate(nova_conversation_fallback_to_classic_air_total{app="assistant-runtime"}[5m])) / clamp_min(sum(rate(nova_conversation_create_success_total{app="assistant-runtime"}[5m]) + rate(nova_conversation_fallback_to_classic_air_total{app="assistant-runtime"}[5m])), 1e-9))
+
+  - key: active_conversations_avg
+    title: Active conversations avg
+    description: Average active conversations in agent-service.
+    service: agent-service
+    source: iva
+    datasource_uid: prometheus
+    aggregation: avg
+    unit: ""
+    promql: sum(active_conversations_count{app="agent-service"})
+
+  - key: llm_error_ratio
+    title: LLM error ratio
+    description: Average LLM request error ratio in agent-service.
+    service: agent-service
+    source: iva
+    datasource_uid: prometheus
+    aggregation: avg
+    unit: "%"
+    promql: 100 * (sum(rate(llm_request_error_count{app="agent-service"}[5m])) / clamp_min(sum(rate(llm_requests_total{app="agent-service"}[5m])), 1e-9))
+
+  - key: llm_first_token_p95
+    title: LLM first token P95
+    description: Peak P95 first token latency in agent-service.
+    service: agent-service
+    source: iva
+    datasource_uid: prometheus
+    aggregation: max
+    unit: "s"
+    promql: histogram_quantile(0.95, sum by (le) (rate(llm_first_token_duration_seconds_bucket{app="agent-service"}[5m])))
+
+  - key: llm_output_tokens_p95
+    title: LLM output tokens P95
+    description: Peak P95 output token volume in agent-service.
+    service: agent-service
+    source: iva
+    datasource_uid: prometheus
+    aggregation: max
+    unit: ""
+    promql: histogram_quantile(0.95, sum by (le) (rate(llm_tokens_usage_bucket{app="agent-service",tokenType="output"}[5m])))
+
+  - key: llm_cache_read_ratio_avg
+    title: LLM cache read ratio avg
+    description: Average cache-read token ratio versus input tokens in agent-service.
+    service: agent-service
+    source: iva
+    datasource_uid: prometheus
+    aggregation: avg
+    unit: "%"
+    promql: |
+      100 * (
+        sum(rate(llm_tokens_usage_sum{app="agent-service",tokenType="cache_read"}[5m]))
+        /
+        clamp_min(sum(rate(llm_tokens_usage_sum{app="agent-service",tokenType="input"}[5m])), 1e-9)
+      )
+
+  - key: llm_cache_read_ratio_p75
+    title: LLM cache read ratio P75
+    description: Daily P75 cache-read token ratio versus input tokens in agent-service.
+    service: agent-service
+    source: iva
+    datasource_uid: prometheus
+    aggregation: p75
+    unit: "%"
+    promql: |
+      100 * (
+        sum(rate(llm_tokens_usage_sum{app="agent-service",tokenType="cache_read"}[5m]))
+        /
+        clamp_min(sum(rate(llm_tokens_usage_sum{app="agent-service",tokenType="input"}[5m])), 1e-9)
+      )
+
+  - key: llm_cache_read_ratio_p90
+    title: LLM cache read ratio P90
+    description: Daily P90 cache-read token ratio versus input tokens in agent-service.
+    service: agent-service
+    source: iva
+    datasource_uid: prometheus
+    aggregation: p90
+    unit: "%"
+    promql: |
+      100 * (
+        sum(rate(llm_tokens_usage_sum{app="agent-service",tokenType="cache_read"}[5m]))
+        /
+        clamp_min(sum(rate(llm_tokens_usage_sum{app="agent-service",tokenType="input"}[5m])), 1e-9)
+      )
+
+  - key: llm_cache_read_ratio_p95
+    title: LLM cache read ratio P95
+    description: Daily P95 cache-read token ratio versus input tokens in agent-service.
+    service: agent-service
+    source: iva
+    datasource_uid: prometheus
+    aggregation: p95
+    unit: "%"
+    promql: |
+      100 * (
+        sum(rate(llm_tokens_usage_sum{app="agent-service",tokenType="cache_read"}[5m]))
+        /
+        clamp_min(sum(rate(llm_tokens_usage_sum{app="agent-service",tokenType="input"}[5m])), 1e-9)
+      )
+
+  - key: tool_handler_error_rate
+    title: Tool handler error rate
+    description: Average tool handler API error events per second.
+    service: agent-service
+    source: iva
+    datasource_uid: prometheus
+    aggregation: avg
+    unit: ""
+    promql: sum(rate(tool_handler_api_error_total{app="agent-service"}[5m]))

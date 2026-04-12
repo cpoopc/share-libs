@@ -44,6 +44,7 @@ class TraceContext:
 
     # ==================== 日志存储 ====================
     logs: Dict[str, List[Dict[str, Any]]] = field(default_factory=dict)
+    component_coverage: Dict[str, Dict[str, Any]] = field(default_factory=dict)
     
     # ==================== 辅助方法 ====================
     
@@ -110,5 +111,6 @@ class TraceContext:
         }
         if self.account_id:
             result["account_id"] = self.account_id
+        if self.component_coverage:
+            result["component_coverage"] = self.component_coverage
         return result
-

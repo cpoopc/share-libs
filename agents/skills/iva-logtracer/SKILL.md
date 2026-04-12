@@ -1,6 +1,6 @@
 ---
 name: iva-logtracer
-description: Use when the user asks to trace an IVA or Nova `sessionId` or `conversationId`, analyze a saved `iva-logtracer` trace directory, explain turn latency or filler-to-agent silence, confirm KB or generic tool usage, or generate a diagnostic trace report across assistant_runtime, agent_service, NCA, AIG, GMG, cprc_srs, or cprc_sgs. Do not use for generic Kibana-only log searches with no trace workflow; route those to `kibana`.
+description: Use when tracing an IVA or Nova `sessionId`, `conversationId`, or saved trace directory; investigating filler-to-agent silence, turn latency, KB or generic tool usage, or a broad symptom that first needs session discovery from a time window before trace analysis. Do not use for generic Kibana-only log searches with no trace workflow; route those to `kibana`.
 ---
 
 # IVA Log Tracer
@@ -24,44 +24,65 @@ iva-logtracer doctor
 
 ## References
 
+- Read `references/routing-matrix.md` first when the request shape is unclear.
 - Read `references/commands.md` for supported commands and argument patterns.
 - Read `references/report-contract.md` when the user expects a diagnostic report or you need the default output shape.
 - Read `references/id-correlation.md` when you need to map IDs across components.
 - Read `references/output-files.md` before interpreting saved trace output.
 - Read `references/debugging-playbooks.md` when the user is asking for root cause analysis instead of a raw trace.
+- Read `references/evaluation-cases.md` when validating trigger boundaries or checking that the workflow still routes correctly.
+- Read `references/iva-project-query-scenarios.md` when you need realistic IVA or Nova investigation scenarios to validate whether the skill covers the main runtime paths and boundary cases.
+- Read `references/eval-iteration-loop.md` when turning new failures into regression cases or running the skill-improvement loop.
+- Reuse `assets/eval-dataset.jsonl` as the canonical evaluation dataset for routing, boundary, and output-contract regressions.
 - Read `assets/session-summary-template.md` before delivering a trace summary.
 
 ## Workflow
 
 1. Route the request before running anything.
    - Classify the input as `sessionId`, `conversationId`, saved trace directory, turn-level sequencing question, KB audit, generic tool audit, or broad debugging symptom.
+   - Use `references/routing-matrix.md` as the source of truth for command selection.
    - Route generic Kibana-only requests to `kibana`.
-   - Default to `iva-logtracer report` unless the user explicitly wants raw logs, one narrow fact, or a specialized audit.
+   - Use `iva-logtracer discover` first when the user gives only a broad symptom or time window and does not provide a stable ID or saved trace directory.
+   - When a broad-symptom request already frames a KB or tool suspicion, preserve that narrower audit as the planned follow-up after discovery instead of collapsing to the default report path.
+   - Use `iva-logtracer trace` for `sessionId` or `conversationId`.
+   - Do not jump straight to `iva-logtracer turn` when the user provides only a stable ID; `turn` starts from an existing saved trace directory.
+   - Use `iva-logtracer turn` only for a saved trace directory when chronology or per-turn sequencing is the main question.
    - Use `iva-logtracer audit kb` for KB-usage or KB-backed wrong-answer questions.
-   - Use `iva-logtracer audit tools` for generic turn-level tool usage or tool/answer contradiction checks.
+   - Use `iva-logtracer audit tools` for generic turn-level tool usage or tool/answer contradiction checks, and let explicit tool-lifecycle or compare-tool-vs-reply intent win over KB wording when both appear.
+   - Keep plain KB-adoption questions such as `知识库是不是调到了但答案没采用` on the `audit kb` path unless the user explicitly shifts to tool lifecycle, completion state, or whether a successful tool call was contradicted by the final answer.
+   - Default to `iva-logtracer report` after `trace --save-json` unless the user explicitly wants raw logs, one narrow fact, or a specialized audit.
 2. Resolve execution scope.
    - Confirm `lab` vs `production` when the target environment is materially ambiguous.
    - Confirm a time window only when the user gave a broad symptom without a stable ID or saved trace directory.
    - Prefer an installed `iva-logtracer` CLI.
+   - Run `iva-logtracer doctor` when env loading, credentials, or output roots are unclear.
 3. Run the trace or analyzer with explicit inputs.
-   - Use `iva-logtracer trace` for `sessionId` or `conversationId`.
+   - Use `iva-logtracer discover` to narrow from time-window symptoms to candidate session IDs, then continue with `trace`.
    - Use `iva-logtracer turn` only after a saved trace directory exists.
    - Add `--save-json` whenever you will run turn analysis, `iva-logtracer audit tools`, `iva-logtracer audit kb`, or `iva-logtracer report`.
-   - Prefer explicit `--env`, `--last`, `--loaders`, and `--save-json` flags over implied defaults.
+   - Add `--reported-symptom` when you produce a diagnostic report from a user complaint.
+   - Prefer explicit `--env`, `--last`, `--loaders`, `--save-json`, and `--lang` flags over implied defaults.
 4. Verify artifacts before forming conclusions.
    - Confirm the output directory exists and contains the files required by the selected workflow.
    - Inspect `summary.json`, `combine.log`, and the relevant `{component}_message.log` files before concluding anything.
+   - Confirm `*_trace.json` exists before running `turn`, `audit tools`, `audit kb`, or `report`.
+   - Confirm the saved trace directory exists before running `audit kb`.
+   - Treat missing `*_trace.json` as a hard stop for saved-trace reports or audits; do not stay on the normal IVA-trace path when the artifacts are incomplete.
+   - If the saved trace directory already includes `*_trace.json`, do not claim missing artifacts for turn analysis.
    - Escalate from the default report to turn analysis only when chronology or event sequencing still matters after reading the saved trace.
 5. Deliver the right output contract.
    - For the default path, follow `references/report-contract.md` and treat the diagnostic document as the main deliverable.
    - For manual summaries, reuse `assets/session-summary-template.md` instead of improvising the report shape.
    - State the environment, input artifact, commands run, output directory, key findings, confidence level, and unresolved gaps.
+   - Match the response shape to the selected mode: discovery summary, diagnostic report, turn analysis, KB audit, tool audit, or manual summary.
 
 ## Constraints
 
 - Do not guess the environment when the wrong target would change the result materially.
 - Do not claim cross-component correlation without confirming the IDs in output files.
+- Do not skip `discover` when the user only supplied a time window or broad symptom with no stable trace target.
 - Do not run `iva-logtracer turn` against a guessed or nonexistent session directory.
+- Do not rerun `trace` if the user already supplied a valid saved trace directory unless the existing artifacts are incomplete for the requested workflow.
 - Do not dump raw logs when a concise summary answers the request.
 - Do not treat generic log search as an `iva-logtracer` task when `kibana` is the better fit.
 - Do not deliver a free-form chat summary when a diagnostic document is expected.
@@ -73,4 +94,5 @@ iva-logtracer doctor
 - Confirm the output directory or files referenced in the response actually exist.
 - Confirm any stated error, timeout, retry, or latency issue is backed by trace output.
 - Confirm the diagnostic document follows `references/report-contract.md`, including `Action Summary` before the deeper sections when the default report path is used.
+- Confirm the selected command path matches one of the cases in `references/routing-matrix.md`.
 - State clearly when the trace is incomplete because inputs, environment, or time range were missing.

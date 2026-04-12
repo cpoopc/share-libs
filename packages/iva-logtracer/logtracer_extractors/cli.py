@@ -5,6 +5,7 @@ from __future__ import annotations
 import argparse
 import json
 
+from logtracer_extractors.kibana_client import KibanaClient
 from logtracer_extractors.runtime import (
     get_runtime_diagnostics,
     init_runtime_home,
@@ -23,6 +24,11 @@ def build_parser() -> argparse.ArgumentParser:
     doctor = subcommands.add_parser("doctor")
     doctor.add_argument("--env", help="Optional named environment, for example production")
     doctor.add_argument("--format", choices=["text", "json"], default="text")
+    doctor.add_argument(
+        "--components",
+        action="store_true",
+        help="Include static component catalog metadata in doctor output",
+    )
 
     discover = subcommands.add_parser("discover")
     discover.add_argument("--env", required=True)
@@ -50,6 +56,11 @@ def build_parser() -> argparse.ArgumentParser:
     trace.add_argument("--output", "-o")
     trace.add_argument("--no-save", action="store_true")
     trace.add_argument("--save-json", action="store_true")
+    trace.add_argument(
+        "--explain-components",
+        action="store_true",
+        help="Include component coverage metadata in the saved trace output",
+    )
 
     turn = subcommands.add_parser("turn")
     turn.add_argument("session_dir", help="Session output directory")
@@ -117,6 +128,18 @@ def _render_doctor_output(diagnostics: dict[str, object]) -> str:
         lines.append("required_vars:")
         for key, present in required_vars.items():
             lines.append(f"  - {key}: {'ok' if present else 'missing'}")
+    components = diagnostics.get("components", [])
+    if components:
+        lines.append("components:")
+        for component in components:
+            aliases = ", ".join(component["aliases"]) if component["aliases"] else "-"
+            candidates = ", ".join(component["index_candidates"]) if component["index_candidates"] else "-"
+            resolved = ", ".join(component.get("resolved_indices", [])) if component.get("resolved_indices") else "-"
+            status = component.get("status", "not_probed")
+            lines.append(
+                f"  - {component['name']}: status={status}; aliases={aliases}; "
+                f"candidates={candidates}; resolved={resolved}"
+            )
     return "\n".join(lines)
 
 
@@ -132,6 +155,16 @@ def main(argv: list[str] | None = None) -> int:
 
     if args.command == "doctor":
         diagnostics = get_runtime_diagnostics(args.env)
+        if args.components:
+            from logtracer_extractors.iva.component_diagnostics import build_component_diagnostics_payload
+
+            probe = False
+            client = None
+            if diagnostics.get("env_exists") and "env_load_error" not in diagnostics:
+                if diagnostics.get("required_vars", {}).get("KIBANA_ES_URL"):
+                    client = KibanaClient.from_env()
+                    probe = True
+            diagnostics["components"] = build_component_diagnostics_payload(client, probe=probe)
         if args.format == "json":
             print(json.dumps(diagnostics, indent=2, ensure_ascii=False, default=str))
         else:
@@ -167,6 +200,8 @@ def main(argv: list[str] | None = None) -> int:
             delegated_argv.append("--no-save")
         if args.save_json:
             delegated_argv.append("--save-json")
+        if args.explain_components:
+            delegated_argv.append("--explain-components")
         return session_tracer.main(delegated_argv)
 
     if args.command == "turn":
