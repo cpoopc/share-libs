@@ -35,4 +35,5 @@ include = ["logtracer_extractors*", "utils*"]
 logtracer_extractors = [
     "iva/components.yaml",
     "iva/correlation_graph.yaml",
+    "iva/environment_profiles.yaml",
 ]

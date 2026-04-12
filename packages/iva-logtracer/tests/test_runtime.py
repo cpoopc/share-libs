@@ -1,4 +1,5 @@
 import os
+import tomllib
 from pathlib import Path
 
 from logtracer_extractors.runtime import (
@@ -124,3 +125,14 @@ def test_load_env_file_clears_stale_ops_overrides(monkeypatch, tmp_path: Path) -
     assert os.getenv("OPS_KIBANA_USERNAME") is None
     assert os.getenv("OPS_KIBANA_PASSWORD") is None
     assert os.getenv("OPS_KIBANA_COMPONENTS") is None
+
+
+def test_pyproject_includes_environment_profile_yaml_package_data() -> None:
+    pyproject_path = Path(__file__).resolve().parents[1] / "pyproject.toml"
+    pyproject = tomllib.loads(pyproject_path.read_text(encoding="utf-8"))
+
+    package_data = pyproject["tool"]["setuptools"]["package-data"]["logtracer_extractors"]
+
+    assert "iva/components.yaml" in package_data
+    assert "iva/correlation_graph.yaml" in package_data
+    assert "iva/environment_profiles.yaml" in package_data
