@@ -10,10 +10,13 @@ Recommended bootstrap from a `share-libs` checkout:
 bash packages/grafana-report-fetching/install.sh
 ```
 
+From a local checkout this installs the CLI in editable mode, so the installed command follows the current clone. Use `--release-cli` when you need to validate the packaged install path instead.
+
 Manual fallback:
 
 ```bash
-uv tool install git+ssh://git@github.com/cpoopc/share-libs.git#subdirectory=packages/grafana-report-fetching
+uv tool install --force --editable /path/to/share-libs/packages/grafana-report-fetching
+uv tool install --force git+ssh://git@github.com/cpoopc/share-libs.git#subdirectory=packages/grafana-report-fetching
 npx skills add https://github.com/cpoopc/share-libs --skill grafana-report-fetching -g -y
 grafana-report-fetching init
 grafana-report-fetching doctor

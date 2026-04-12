@@ -10,10 +10,13 @@ Recommended bootstrap:
 bash packages/jira-ticket-sync/install.sh
 ```
 
+From a local checkout this installs the CLI in editable mode, so the installed command follows the current clone. Use `--release-cli` when you need to validate the packaged install path instead.
+
 Manual fallback:
 
 ```bash
-uv tool install git+ssh://git@github.com/cpoopc/share-libs.git#subdirectory=packages/jira-ticket-sync
+uv tool install --force --editable /path/to/share-libs/packages/jira-ticket-sync
+uv tool install --force git+ssh://git@github.com/cpoopc/share-libs.git#subdirectory=packages/jira-ticket-sync
 jira-ticket-sync init
 jira-ticket-sync doctor
 ```

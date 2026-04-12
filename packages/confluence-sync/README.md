@@ -10,10 +10,13 @@ Recommended bootstrap from a `share-libs` checkout:
 bash packages/confluence-sync/install.sh
 ```
 
+From a local checkout this installs the CLI in editable mode, so the installed command follows the current clone. Use `--release-cli` when you need to validate the packaged install path instead.
+
 Manual fallback:
 
 ```bash
-uv tool install git+ssh://git@github.com/cpoopc/share-libs.git#subdirectory=packages/confluence-sync
+uv tool install --force --editable /path/to/share-libs/packages/confluence-sync
+uv tool install --force git+ssh://git@github.com/cpoopc/share-libs.git#subdirectory=packages/confluence-sync
 npx skills add https://github.com/cpoopc/share-libs --skill confluence -g -y
 confluence-sync init
 confluence-sync doctor

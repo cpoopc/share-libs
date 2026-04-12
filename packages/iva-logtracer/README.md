@@ -30,7 +30,7 @@ bash packages/iva-logtracer/install.sh
 
 这个脚本会：
 
-- 安装或刷新 `iva-logtracer` CLI
+- 以 editable 模式安装或刷新 `iva-logtracer` CLI，让安装版直接跟随当前 checkout
 - 通过 `skills.sh` 安装 `iva-logtracer` skill（如果检测到 `npx`）
 - 运行 `iva-logtracer init`
 - 自动补 `~/.config/iva-logtracer/.env.lab` 和 `.env.production` 模板
@@ -41,12 +41,24 @@ bash packages/iva-logtracer/install.sh
 bash packages/iva-logtracer/install.sh --skip-skill
 ```
 
-### 2. 手动安装 CLI
-
-推荐直接安装成工具：
+如果你要验证真实打包安装，而不是绑定本地源码，显式使用：
 
 ```bash
-uv tool install git+ssh://git@github.com/cpoopc/share-libs.git#subdirectory=packages/iva-logtracer
+bash packages/iva-logtracer/install.sh --release-cli
+```
+
+### 2. 手动安装 CLI
+
+开发态推荐把安装版 CLI 直接绑定到本地 clone：
+
+```bash
+uv tool install --force --editable /path/to/share-libs/packages/iva-logtracer
+```
+
+发布态或打包验证再使用真实安装：
+
+```bash
+uv tool install --force git+ssh://git@github.com/cpoopc/share-libs.git#subdirectory=packages/iva-logtracer
 ```
 
 如果你在源码仓库内开发，再使用：

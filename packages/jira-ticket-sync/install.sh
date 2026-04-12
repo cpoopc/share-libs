@@ -17,15 +17,18 @@ RUN_INIT=1
 DRY_RUN=0
 SKILL_SCOPE_FLAG="-g"
 SKILL_INSTALL_MODE="install"
+CLI_INSTALL_MODE="auto"
 
 usage() {
     cat <<'EOF'
 Install jira-ticket-sync CLI and the optional Codex-compatible skill.
 
 Usage:
-  ./install.sh [--skip-skill] [--skip-init] [--project-skill] [--skill-mode install|symlink] [--dry-run]
+  ./install.sh [--editable-cli|--release-cli] [--skip-skill] [--skip-init] [--project-skill] [--skill-mode install|symlink] [--dry-run]
 
 Options:
+  --editable-cli Install the CLI from the local checkout in editable mode (best for development)
+  --release-cli  Install the packaged CLI from the remote git source (best for release validation)
   --skip-skill    Install only the CLI, skip `npx skills add`
   --skip-init     Skip `jira-ticket-sync init`
   --project-skill Install the skill in project scope instead of global scope
@@ -63,6 +66,40 @@ run_cmd() {
 
 require_cmd() {
     command -v "$1" >/dev/null 2>&1 || die "Missing required command: $1"
+}
+
+resolve_cli_install_source() {
+    case "$CLI_INSTALL_MODE" in
+        auto)
+            if [ -f "$SCRIPT_DIR/pyproject.toml" ]; then
+                CLI_INSTALL_MODE="editable"
+                PACKAGE_SOURCE="$SCRIPT_DIR"
+            else
+                CLI_INSTALL_MODE="release"
+                PACKAGE_SOURCE="$REMOTE_PACKAGE_SOURCE"
+            fi
+            ;;
+        editable)
+            [ -f "$SCRIPT_DIR/pyproject.toml" ] || die "--editable-cli requires a local checkout with $SCRIPT_DIR/pyproject.toml"
+            PACKAGE_SOURCE="$SCRIPT_DIR"
+            ;;
+        release)
+            PACKAGE_SOURCE="$REMOTE_PACKAGE_SOURCE"
+            ;;
+        *)
+            die "Unsupported CLI install mode: $CLI_INSTALL_MODE"
+            ;;
+    esac
+}
+
+install_cli() {
+    if [ "$CLI_INSTALL_MODE" = "editable" ]; then
+        log "Installing CLI in editable mode from $PACKAGE_SOURCE"
+        run_cmd uv tool install --force --editable "$PACKAGE_SOURCE"
+    else
+        log "Installing CLI in release mode from $PACKAGE_SOURCE"
+        run_cmd uv tool install --force "$PACKAGE_SOURCE"
+    fi
 }
 
 skill_target_root() {
@@ -133,6 +170,12 @@ ensure_env_variants() {
 
 while [ "$#" -gt 0 ]; do
     case "$1" in
+        --editable-cli)
+            CLI_INSTALL_MODE="editable"
+            ;;
+        --release-cli)
+            CLI_INSTALL_MODE="release"
+            ;;
         --skip-skill)
             INSTALL_SKILL=0
             ;;
@@ -167,18 +210,14 @@ while [ "$#" -gt 0 ]; do
     shift
 done
 
-if [ -f "$SCRIPT_DIR/pyproject.toml" ]; then
-    PACKAGE_SOURCE="$SCRIPT_DIR"
-fi
-
 if [ -f "$REPO_ROOT/agents/skills/$SKILL_NAME/SKILL.md" ]; then
     SKILL_SOURCE="$REPO_ROOT"
 fi
 
 require_cmd uv
+resolve_cli_install_source
 
-log "Installing CLI from $PACKAGE_SOURCE"
-run_cmd uv tool install --force "$PACKAGE_SOURCE"
+install_cli
 
 if [ "$INSTALL_SKILL" -eq 1 ]; then
     if [ "$SKILL_INSTALL_MODE" = "install" ]; then

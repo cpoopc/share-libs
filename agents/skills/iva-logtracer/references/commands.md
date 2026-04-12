@@ -10,10 +10,19 @@ Preferred bootstrap from a `share-libs` checkout:
 bash packages/iva-logtracer/install.sh
 ```
 
+This default local-checkout flow installs the CLI in editable mode so the installed command tracks the current clone.
+
+Use release mode when you need to validate the packaged install instead of local source:
+
+```bash
+bash packages/iva-logtracer/install.sh --release-cli
+```
+
 Manual install or refresh:
 
 ```bash
-uv tool install git+ssh://git@github.com/cpoopc/share-libs.git#subdirectory=packages/iva-logtracer
+uv tool install --force --editable /path/to/share-libs/packages/iva-logtracer
+uv tool install --force git+ssh://git@github.com/cpoopc/share-libs.git#subdirectory=packages/iva-logtracer
 npx skills add /path/to/share-libs --skill iva-logtracer -g -y
 ```
 

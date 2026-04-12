@@ -13,9 +13,12 @@ Install once on a new machine with:
 bash packages/iva-logtracer/install.sh
 ```
 
+From a local `share-libs` checkout this installs the CLI in editable mode, so the installed command follows the current clone. Use `--release-cli` when you need to validate the packaged install path instead.
+
 Manual fallback:
 
 ```bash
+uv tool install --force --editable /path/to/share-libs/packages/iva-logtracer
 uv tool install git+ssh://git@github.com/cpoopc/share-libs.git#subdirectory=packages/iva-logtracer
 npx skills add /path/to/share-libs --skill iva-logtracer -g -y
 iva-logtracer init
