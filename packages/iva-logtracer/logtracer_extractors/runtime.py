@@ -7,6 +7,7 @@ from pathlib import Path
 PACKAGE_ROOT = Path(__file__).resolve().parent.parent
 APP_NAME = "iva-logtracer"
 DEFAULT_COMPONENT_PROBE_TTL_SECONDS = 600
+PREFIXED_ENV_PREFIXES = ("OPS_KIBANA_",)
 DEFAULT_ENV_TEMPLATE = """# IVA Logtracer configuration
 KIBANA_ES_URL=
 KIBANA_USERNAME=
@@ -140,8 +141,8 @@ def resolve_env_file(env_name: str | None = None) -> Path:
     return env_file
 
 
-def load_env_file(env_name: str | None = None) -> Path:
-    env_file = resolve_env_file(env_name)
+def _parse_env_file(env_file: Path) -> dict[str, str]:
+    parsed: dict[str, str] = {}
 
     for raw_line in env_file.read_text(encoding="utf-8").splitlines():
         line = raw_line.strip()
@@ -161,6 +162,23 @@ def load_env_file(env_name: str | None = None) -> Path:
         ):
             value = value[1:-1]
 
+        parsed[key] = value
+
+    return parsed
+
+
+def _clear_stale_prefixed_env_vars(parsed_env: dict[str, str]) -> None:
+    for prefix in PREFIXED_ENV_PREFIXES:
+        for key in [name for name in os.environ if name.startswith(prefix) and name not in parsed_env]:
+            os.environ.pop(key, None)
+
+
+def load_env_file(env_name: str | None = None) -> Path:
+    env_file = resolve_env_file(env_name)
+    parsed_env = _parse_env_file(env_file)
+    _clear_stale_prefixed_env_vars(parsed_env)
+
+    for key, value in parsed_env.items():
         os.environ[key] = value
 
     return env_file

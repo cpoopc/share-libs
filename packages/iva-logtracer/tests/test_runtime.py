@@ -1,3 +1,4 @@
+import os
 from pathlib import Path
 
 from logtracer_extractors.runtime import (
@@ -10,6 +11,7 @@ from logtracer_extractors.runtime import (
     get_output_root,
     get_runtime_diagnostics,
     init_runtime_home,
+    load_env_file,
     resolve_env_file,
 )
 
@@ -89,3 +91,36 @@ def test_init_runtime_home_uses_canonical_environment_alias(monkeypatch, tmp_pat
     paths = init_runtime_home(env_name="ops")
 
     assert paths["env_path"].name == ".env.stage"
+
+
+def test_load_env_file_clears_stale_ops_overrides(monkeypatch, tmp_path: Path) -> None:
+    monkeypatch.setenv("XDG_CONFIG_HOME", str(tmp_path / "config"))
+    monkeypatch.setenv("XDG_CACHE_HOME", str(tmp_path / "cache"))
+    monkeypatch.delenv("IVA_LOGTRACER_ENV_FILE", raising=False)
+    monkeypatch.setenv("OPS_KIBANA_USERNAME", "stale-user")
+    monkeypatch.setenv("OPS_KIBANA_PASSWORD", "stale-pass")
+    monkeypatch.setenv("OPS_KIBANA_COMPONENTS", "nca,gmg")
+
+    env_path = tmp_path / "config" / "iva-logtracer" / ".env.stage"
+    env_path.parent.mkdir(parents=True, exist_ok=True)
+    env_path.write_text(
+        "\n".join(
+            [
+                "KIBANA_URL=https://kibana.lab.nordigy.ru",
+                "KIBANA_USERNAME=primary-user",
+                "KIBANA_PASSWORD=primary-pass",
+                "OPS_KIBANA_URL=https://kibana.ops.ringcentral.com",
+            ]
+        )
+        + "\n",
+        encoding="utf-8",
+    )
+
+    load_env_file("ops")
+
+    assert os.getenv("KIBANA_USERNAME") == "primary-user"
+    assert os.getenv("KIBANA_PASSWORD") == "primary-pass"
+    assert os.getenv("OPS_KIBANA_URL") == "https://kibana.ops.ringcentral.com"
+    assert os.getenv("OPS_KIBANA_USERNAME") is None
+    assert os.getenv("OPS_KIBANA_PASSWORD") is None
+    assert os.getenv("OPS_KIBANA_COMPONENTS") is None
