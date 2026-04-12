@@ -153,6 +153,8 @@ def test_main_dispatches_trace_command(monkeypatch: pytest.MonkeyPatch, tmp_path
 
     def fake_main(argv: list[str] | None = None) -> int:
         captured["argv"] = argv
+        import os
+        captured["active_env"] = os.getenv("IVA_LOGTRACER_ACTIVE_ENV")
         return 0
 
     monkeypatch.setattr("logtracer_extractors.iva.session_tracer.main", fake_main)
@@ -180,6 +182,7 @@ def test_main_dispatches_trace_command(monkeypatch: pytest.MonkeyPatch, tmp_path
         "json",
         "--save-json",
     ]
+    assert captured["active_env"] == "production"
 
 
 def test_main_dispatches_turn_command(monkeypatch: pytest.MonkeyPatch) -> None:

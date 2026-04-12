@@ -98,35 +98,49 @@ def test_doctor_includes_probed_component_status_in_json_output(
     capsys,
 ) -> None:
     env_file = tmp_path / ".env.production"
-    env_file.write_text("KIBANA_ES_URL=https://example.com:9200\n", encoding="utf-8")
+    env_file.write_text(
+        "KIBANA_ES_URL=https://example.com:9200\nOPS_KIBANA_ES_URL=https://ops.example.com:9200\n",
+        encoding="utf-8",
+    )
     monkeypatch.setenv("IVA_LOGTRACER_ENV_FILE", str(env_file))
     monkeypatch.setattr("logtracer_extractors.cli.KibanaClient", type("FakeClient", (), {"from_env": staticmethod(lambda: object())}))
     monkeypatch.setattr(
-        "logtracer_extractors.iva.component_diagnostics.build_component_diagnostics_payload",
-        lambda client, probe=True, cache_scope=None: [
-            {
-                "name": "assistant_runtime",
-                "aliases": ["air"],
-                "index_candidates": ["*:*-logs-air_assistant_runtime-*"],
+        "logtracer_extractors.iva.session_tracer._build_loader_clients",
+        lambda component_names: {"nca": "ops-client", "gmg": "ops-client"},
+    )
+    monkeypatch.setattr(
+        "logtracer_extractors.iva.session_tracer._build_component_diagnostics_for_clients",
+        lambda client, component_names, loader_clients, probe=True: {
+            component_name: {
+                "name": component_name,
+                "aliases": ["air"] if component_name == "assistant_runtime" else [],
+                "index_candidates": [f"logs-{component_name}-*"],
                 "entry_fields": ["sessionId"],
                 "evidence_fields": ["message"],
                 "default_enabled": True,
                 "status": "matched",
-                "resolved_indices": ["logs-air_assistant_runtime-2026.04.12"],
+                "resolved_indices": [f"logs-{component_name}-2026.04.12"],
                 "queryable_patterns": [],
                 "probe_hit_count": 1,
+                "selected_backend": "ops" if component_name == "nca" else "primary",
+                "routing_source": "environment_profile:production"
+                if component_name == "nca"
+                else "primary_default",
             }
-        ],
+            for component_name in component_names
+        },
     )
 
     exit_code = cli_main(["doctor", "--env", "production", "--components", "--format", "json"])
 
     assert exit_code == 0
     payload = json.loads(capsys.readouterr().out)
-    assert payload["components"][0]["status"] == "matched"
-    assert payload["components"][0]["resolved_indices"] == ["logs-air_assistant_runtime-2026.04.12"]
-    assert payload["components"][0]["queryable_patterns"] == []
-    assert payload["components"][0]["probe_hit_count"] == 1
+    components = {entry["name"]: entry for entry in payload["components"]}
+    assert components["assistant_runtime"]["status"] == "matched"
+    assert components["assistant_runtime"]["selected_backend"] == "primary"
+    assert components["nca"]["resolved_indices"] == ["logs-nca-2026.04.12"]
+    assert components["nca"]["selected_backend"] == "ops"
+    assert components["nca"]["routing_source"] == "environment_profile:production"
 
 
 def test_build_component_coverage_marks_missing_dependencies() -> None:
@@ -423,21 +437,26 @@ def test_session_tracer_writes_component_coverage_when_explaining(monkeypatch, t
     monkeypatch.setattr(session_tracer, "KibanaClient", type("FakeClient", (), {"from_env": staticmethod(lambda: object())}))
     monkeypatch.setattr(session_tracer, "SessionTraceOrchestrator", FakeOrchestrator)
     monkeypatch.setattr(session_tracer, "save_ai_analysis_files", lambda *args, **kwargs: {})
+    monkeypatch.setattr(session_tracer, "_build_prefixed_kibana_client", lambda prefix: None)
     monkeypatch.setattr(
         session_tracer,
-        "build_component_diagnostics_map",
+        "_build_component_diagnostics_for_clients",
         lambda *args, **kwargs: {
             "assistant_runtime": {
                 "status": "matched",
                 "resolved_indices": ["logs-air_assistant_runtime-2026.04.12"],
                 "queryable_patterns": [],
                 "probe_hit_count": 1,
+                "selected_backend": "primary",
+                "routing_source": "primary_default",
             },
             "gmg": {
                 "status": "empty",
                 "resolved_indices": ["logs-gmg-2026.04.12"],
                 "queryable_patterns": [],
                 "probe_hit_count": 0,
+                "selected_backend": "primary",
+                "routing_source": "primary_default",
             },
         },
     )
@@ -454,6 +473,8 @@ def test_session_tracer_writes_component_coverage_when_explaining(monkeypatch, t
             "resolved_indices": ["logs-air_assistant_runtime-2026.04.12"],
             "queryable_patterns": [],
             "probe_hit_count": 1,
+            "selected_backend": "primary",
+            "routing_source": "primary_default",
             "log_count": 1,
             "query": 'sessionId:"s-123"',
             "correlation_paths": [],
@@ -463,7 +484,195 @@ def test_session_tracer_writes_component_coverage_when_explaining(monkeypatch, t
             "resolved_indices": ["logs-gmg-2026.04.12"],
             "queryable_patterns": [],
             "probe_hit_count": 0,
+            "selected_backend": "primary",
+            "routing_source": "primary_default",
             "missing_dependencies": ["logs.nca"],
             "correlation_paths": ["nca.request_id -> gmg.log_context_RCRequestId"],
         },
     }
+
+
+def test_session_tracer_routes_nova_components_to_ops_client(monkeypatch, tmp_path: Path) -> None:
+    captured: dict[str, object] = {}
+
+    class FakeContext:
+        session_id = "s-123"
+        conversation_id = "c-123"
+        srs_session_id = None
+        sgs_session_id = None
+        component_coverage = {}
+        logs = {"assistant_runtime": []}
+
+        def to_result(self) -> dict:
+            return {
+                "session_id": self.session_id,
+                "conversation_id": self.conversation_id,
+                "logs": self.logs,
+                "summary": {},
+                "component_coverage": {},
+            }
+
+        def get_summary(self) -> dict[str, int]:
+            return {}
+
+    class FakeOrchestrator:
+        def __init__(self, client, *, loader_clients=None) -> None:
+            captured["client"] = client
+            captured["loader_clients"] = loader_clients or {}
+
+        def trace_by_session(self, **kwargs):
+            return FakeContext()
+
+    class FakeClientFactory:
+        @staticmethod
+        def from_env():
+            return "primary-client"
+
+    env_file = tmp_path / ".env.stage"
+    env_file.write_text(
+        "\n".join(
+            [
+                "KIBANA_ES_URL=https://stage.example.com:9200",
+                "OPS_KIBANA_ES_URL=https://kibana.ops.ringcentral.com:9200",
+                "OPS_KIBANA_USERNAME=ops-user",
+                "OPS_KIBANA_PASSWORD=ops-secret",
+            ]
+        )
+        + "\n",
+        encoding="utf-8",
+    )
+    monkeypatch.setenv("IVA_LOGTRACER_ENV_FILE", str(env_file))
+    monkeypatch.setenv("IVA_LOGTRACER_ACTIVE_ENV", "stage")
+    monkeypatch.setenv("OPS_KIBANA_ES_URL", "https://kibana.ops.ringcentral.com:9200")
+    monkeypatch.setenv("OPS_KIBANA_USERNAME", "ops-user")
+    monkeypatch.setenv("OPS_KIBANA_PASSWORD", "ops-secret")
+    monkeypatch.setattr(session_tracer, "DEFAULT_OUTPUT_DIR", tmp_path)
+    monkeypatch.setattr(session_tracer, "KibanaClient", FakeClientFactory)
+    monkeypatch.setattr(session_tracer, "SessionTraceOrchestrator", FakeOrchestrator)
+    monkeypatch.setattr(session_tracer, "save_ai_analysis_files", lambda *args, **kwargs: {})
+    monkeypatch.setattr(session_tracer, "_build_prefixed_kibana_client", lambda prefix: f"{prefix}-client")
+
+    exit_code = session_tracer.main(["s-123", "--components", "assistant_runtime", "nca", "aig", "gmg"])
+
+    assert exit_code == 0
+    assert captured["client"] == "primary-client"
+    assert captured["loader_clients"] == {
+        "nca": "OPS_KIBANA-client",
+        "aig": "OPS_KIBANA-client",
+        "gmg": "OPS_KIBANA-client",
+    }
+
+
+def test_build_loader_clients_can_route_cprc_via_env_override(monkeypatch) -> None:
+    monkeypatch.setenv(
+        "OPS_KIBANA_COMPONENTS",
+        "nca,aig,gmg,cprc_srs,cprc_sgs",
+    )
+    monkeypatch.setattr(session_tracer, "_build_prefixed_kibana_client", lambda prefix: f"{prefix}-client")
+
+    loader_clients = session_tracer._build_loader_clients(
+        {"assistant_runtime", "nca", "gmg", "cprc_srs", "cprc_sgs"}
+    )
+
+    assert loader_clients == {
+        "nca": "OPS_KIBANA-client",
+        "gmg": "OPS_KIBANA-client",
+        "cprc_srs": "OPS_KIBANA-client",
+        "cprc_sgs": "OPS_KIBANA-client",
+    }
+
+
+def test_build_loader_clients_ignores_blank_override_and_uses_profile(monkeypatch) -> None:
+    monkeypatch.setenv("OPS_KIBANA_COMPONENTS", "")
+    monkeypatch.setenv("IVA_LOGTRACER_ACTIVE_ENV", "stage")
+    monkeypatch.setattr(session_tracer, "_build_prefixed_kibana_client", lambda prefix: f"{prefix}-client")
+
+    loader_clients = session_tracer._build_loader_clients(
+        {"assistant_runtime", "nca", "gmg", "cprc_srs", "cprc_sgs"}
+    )
+
+    assert loader_clients == {
+        "nca": "OPS_KIBANA-client",
+        "gmg": "OPS_KIBANA-client",
+        "cprc_srs": "OPS_KIBANA-client",
+        "cprc_sgs": "OPS_KIBANA-client",
+    }
+
+
+def test_build_loader_clients_routes_stage_profile_components_to_ops(monkeypatch) -> None:
+    monkeypatch.delenv("OPS_KIBANA_COMPONENTS", raising=False)
+    monkeypatch.setenv("IVA_LOGTRACER_ACTIVE_ENV", "stage")
+    monkeypatch.setattr(session_tracer, "_build_prefixed_kibana_client", lambda prefix: f"{prefix}-client")
+
+    loader_clients = session_tracer._build_loader_clients(
+        {"assistant_runtime", "nca", "gmg", "cprc_srs", "cprc_sgs"}
+    )
+
+    assert loader_clients == {
+        "nca": "OPS_KIBANA-client",
+        "gmg": "OPS_KIBANA-client",
+        "cprc_srs": "OPS_KIBANA-client",
+        "cprc_sgs": "OPS_KIBANA-client",
+    }
+
+
+def test_build_loader_clients_routes_production_profile_components_to_ops(monkeypatch) -> None:
+    monkeypatch.delenv("OPS_KIBANA_COMPONENTS", raising=False)
+    monkeypatch.setenv("IVA_LOGTRACER_ACTIVE_ENV", "production")
+    monkeypatch.setattr(session_tracer, "_build_prefixed_kibana_client", lambda prefix: f"{prefix}-client")
+
+    loader_clients = session_tracer._build_loader_clients(
+        {"assistant_runtime", "nca", "gmg", "cprc_srs", "cprc_sgs"}
+    )
+
+    assert loader_clients == {
+        "nca": "OPS_KIBANA-client",
+        "gmg": "OPS_KIBANA-client",
+        "cprc_srs": "OPS_KIBANA-client",
+        "cprc_sgs": "OPS_KIBANA-client",
+    }
+
+
+def test_build_loader_clients_keeps_lab_profile_on_primary(monkeypatch) -> None:
+    monkeypatch.delenv("OPS_KIBANA_COMPONENTS", raising=False)
+    monkeypatch.setenv("IVA_LOGTRACER_ACTIVE_ENV", "lab")
+    monkeypatch.setattr(session_tracer, "_build_prefixed_kibana_client", lambda prefix: f"{prefix}-client")
+
+    loader_clients = session_tracer._build_loader_clients(
+        {"assistant_runtime", "nca", "gmg", "cprc_srs", "cprc_sgs"}
+    )
+
+    assert loader_clients == {}
+
+
+def test_build_loader_clients_defaults_to_nova_components_without_active_env(monkeypatch) -> None:
+    monkeypatch.delenv("OPS_KIBANA_COMPONENTS", raising=False)
+    monkeypatch.delenv("IVA_LOGTRACER_ACTIVE_ENV", raising=False)
+    monkeypatch.setattr(session_tracer, "_build_prefixed_kibana_client", lambda prefix: f"{prefix}-client")
+
+    loader_clients = session_tracer._build_loader_clients(
+        {"assistant_runtime", "nca", "gmg", "cprc_srs", "cprc_sgs"}
+    )
+
+    assert loader_clients == {
+        "nca": "OPS_KIBANA-client",
+        "gmg": "OPS_KIBANA-client",
+    }
+
+
+def test_build_prefixed_kibana_client_reuses_primary_credentials(monkeypatch) -> None:
+    class FakeClient:
+        def __init__(self, config) -> None:
+            self.config = config
+
+    monkeypatch.setenv("KIBANA_USERNAME", "primary-user")
+    monkeypatch.setenv("KIBANA_PASSWORD", "primary-secret")
+    monkeypatch.setenv("OPS_KIBANA_URL", "https://kibana.ops.ringcentral.com")
+    monkeypatch.setattr(session_tracer, "KibanaClient", FakeClient)
+
+    client = session_tracer._build_prefixed_kibana_client("OPS_KIBANA")
+
+    assert client is not None
+    assert client.config.url == "https://kibana.ops.ringcentral.com"
+    assert client.config.username == "primary-user"
+    assert client.config.password == "primary-secret"

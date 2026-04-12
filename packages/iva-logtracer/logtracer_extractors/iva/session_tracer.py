@@ -15,17 +15,19 @@ IVA Session Trace - IVA 跨组件日志追踪
 
 import argparse
 import json
+import os
 import re
 import sys
 from pathlib import Path
 from typing import Any, Dict, List
 
 try:
-    from ..kibana_client import KibanaClient
+    from ..kibana_client import KibanaClient, KibanaConfig
     from ..runtime import get_output_root
     from .ai_extractor import save_ai_analysis_files
     from .component_catalog import get_component_definition, resolve_component_names
-    from .component_diagnostics import build_component_diagnostics_map
+    from .component_diagnostics import build_component_diagnostics_payload
+    from .environment_profiles import get_environment_profile
     from .correlation_graph import get_incoming_edges
     from .loaders import ALL_LOADERS, DEFAULT_CONVERSATION_LOADERS, DEFAULT_SESSION_LOADERS
     from .orchestrator import SessionTraceOrchestrator
@@ -40,18 +42,22 @@ except ImportError:
 
     from extractors.iva.ai_extractor import save_ai_analysis_files
     from extractors.iva.component_catalog import get_component_definition, resolve_component_names
-    from extractors.iva.component_diagnostics import build_component_diagnostics_map
+    from extractors.iva.component_diagnostics import build_component_diagnostics_payload
+    from extractors.iva.environment_profiles import get_environment_profile
     from extractors.iva.correlation_graph import get_incoming_edges
     from extractors.iva.loaders import ALL_LOADERS, DEFAULT_CONVERSATION_LOADERS, DEFAULT_SESSION_LOADERS
     from extractors.iva.orchestrator import SessionTraceOrchestrator
     from extractors.iva.trace_context import TraceContext
-    from extractors.kibana_client import KibanaClient
+    from extractors.kibana_client import KibanaClient, KibanaConfig
     from extractors.runtime import get_output_root
 
 
 # 默认输出目录
 DEFAULT_OUTPUT_DIR = get_output_root()
 LOADER_CLASSES_BY_NAME = {loader_class().name: loader_class for loader_class in ALL_LOADERS}
+DEFAULT_OPS_COMPONENTS = ("nca", "aig", "gmg")
+PRIMARY_BACKEND = "primary"
+OPS_BACKEND = "ops"
 
 
 def get_output_dir(session_id: str, conversation_id: str) -> Path:
@@ -113,6 +119,210 @@ def is_conversation_id(id_str: str) -> bool:
     return bool(re.match(uuid_pattern, id_str))
 
 
+def _prefixed_env_name(prefix: str, suffix: str) -> str:
+    return f"{prefix}_{suffix}"
+
+
+def _get_prefixed_env(prefix: str, suffix: str) -> str | None:
+    return os.getenv(_prefixed_env_name(prefix, suffix))
+
+
+def _parse_bool_env(value: str | None, *, default: bool) -> bool:
+    if value is None:
+        return default
+    return value.lower() == "true"
+
+
+def _parse_int_env(value: str | None, *, default: int) -> int:
+    try:
+        return int(value) if value is not None else default
+    except (TypeError, ValueError):
+        return default
+
+
+def _build_prefixed_kibana_client(prefix: str) -> KibanaClient | None:
+    url = _get_prefixed_env(prefix, "URL") or _get_prefixed_env(prefix, "ES_URL")
+    if not url:
+        return None
+
+    return KibanaClient(
+        KibanaConfig(
+            url=url,
+            username=_get_prefixed_env(prefix, "USERNAME") or os.getenv("KIBANA_USERNAME"),
+            password=_get_prefixed_env(prefix, "PASSWORD") or os.getenv("KIBANA_PASSWORD"),
+            default_index=_get_prefixed_env(prefix, "INDEX") or os.getenv("KIBANA_INDEX", "*"),
+            verify_certs=_parse_bool_env(
+                _get_prefixed_env(prefix, "VERIFY_CERTS") or os.getenv("KIBANA_VERIFY_CERTS"),
+                default=True,
+            ),
+            timeout=_parse_int_env(
+                _get_prefixed_env(prefix, "TIMEOUT") or os.getenv("KIBANA_TIMEOUT"),
+                default=30,
+            ),
+        )
+    )
+
+
+def _resolve_ops_component_names(raw_names: list[str]) -> list[str]:
+    resolved: list[str] = []
+    seen: set[str] = set()
+    unknown: list[str] = []
+
+    for raw_name in raw_names:
+        try:
+            component_name = get_component_definition(raw_name).name
+        except KeyError:
+            unknown.append(raw_name)
+            continue
+
+        if component_name in seen:
+            continue
+        seen.add(component_name)
+        resolved.append(component_name)
+
+    if unknown:
+        print(
+            "⚠️  Ignoring unknown OPS_KIBANA_COMPONENTS entries: "
+            + ", ".join(sorted(unknown)),
+            file=sys.stderr,
+        )
+
+    return resolved
+
+
+def _get_active_routing_env() -> str | None:
+    for key in ("IVA_LOGTRACER_ENV_PROFILE", "IVA_LOGTRACER_ACTIVE_ENV"):
+        value = os.getenv(key, "").strip()
+        if value:
+            return value
+    return None
+
+
+def _get_explicit_ops_component_names() -> list[str] | None:
+    if "OPS_KIBANA_COMPONENTS" not in os.environ:
+        return None
+
+    raw_value = os.getenv("OPS_KIBANA_COMPONENTS", "").strip()
+    if not raw_value:
+        return None
+    if raw_value.lower() in {"none", "off", "disabled"}:
+        return []
+
+    raw_names = [token.strip() for token in raw_value.replace(",", " ").split() if token.strip()]
+    if not raw_names:
+        return None
+
+    return _resolve_ops_component_names(raw_names)
+
+
+def _get_profile_ops_component_names(active_env: str) -> list[str]:
+    profile = get_environment_profile(active_env)
+    return sorted(
+        component_name
+        for component_name, backend_name in profile.component_backends.items()
+        if backend_name == "ops"
+    )
+
+
+def _get_ops_component_selection() -> tuple[list[str], str]:
+    explicit = _get_explicit_ops_component_names()
+    if explicit is not None:
+        return explicit, "explicit_override"
+
+    active_env = _get_active_routing_env()
+    if active_env:
+        try:
+            profile = get_environment_profile(active_env)
+            return _get_profile_ops_component_names(active_env), f"environment_profile:{profile.name}"
+        except KeyError:
+            print(
+                f"⚠️  Unknown routing environment profile: {active_env}; falling back to legacy ops defaults",
+                file=sys.stderr,
+            )
+
+    return list(DEFAULT_OPS_COMPONENTS), "legacy_default"
+
+
+def _build_component_routes(component_names: List[str]) -> Dict[str, Dict[str, str]]:
+    ops_component_names, routing_source = _get_ops_component_selection()
+    ops_component_set = set(ops_component_names)
+
+    routes: Dict[str, Dict[str, str]] = {}
+    for component_name in component_names:
+        if component_name in ops_component_set:
+            routes[component_name] = {
+                "requested_backend": OPS_BACKEND,
+                "routing_source": routing_source,
+            }
+        else:
+            routes[component_name] = {
+                "requested_backend": PRIMARY_BACKEND,
+                "routing_source": "primary_default",
+            }
+    return routes
+
+
+def _build_loader_clients(enabled_loaders: set[str]) -> dict[str, Any]:
+    component_routes = _build_component_routes(sorted(enabled_loaders))
+    ops_components = {
+        component_name
+        for component_name, route in component_routes.items()
+        if route["requested_backend"] == OPS_BACKEND
+    }
+    if not ops_components:
+        return {}
+
+    ops_client = _build_prefixed_kibana_client("OPS_KIBANA")
+    if ops_client is None:
+        return {}
+
+    return {component_name: ops_client for component_name in ops_components}
+
+
+def _build_component_diagnostics_for_clients(
+    primary_client: Any,
+    component_names: List[str],
+    loader_clients: dict[str, Any],
+    *,
+    probe: bool = True,
+) -> Dict[str, Dict[str, Any]]:
+    component_routes = _build_component_routes(component_names)
+
+    grouped_components: dict[tuple[int, str], tuple[Any, str, list[str]]] = {}
+    for component_name in component_names:
+        component_client = loader_clients.get(component_name, primary_client)
+        requested_backend = component_routes[component_name]["requested_backend"]
+        selected_backend = requested_backend if component_name in loader_clients else PRIMARY_BACKEND
+        group_key = (id(component_client), selected_backend)
+        if group_key not in grouped_components:
+            grouped_components[group_key] = (component_client, selected_backend, [])
+        grouped_components[group_key][2].append(component_name)
+
+    diagnostics: Dict[str, Dict[str, Any]] = {}
+    for component_client, selected_backend, grouped_names in grouped_components.values():
+        client_url = getattr(getattr(component_client, "config", None), "url", "unknown")
+        cache_scope = None
+        if probe and component_client is not None:
+            cache_scope = f"{_get_active_routing_env() or 'default'}|backend={selected_backend}|{client_url}"
+        payload = build_component_diagnostics_payload(
+            component_client,
+            grouped_names,
+            probe=probe,
+            cache_scope=cache_scope,
+        )
+        for entry in payload:
+            component_name = str(entry["name"])
+            route = component_routes[component_name]
+            requested_backend = route["requested_backend"]
+            entry["selected_backend"] = selected_backend
+            entry["routing_source"] = route["routing_source"]
+            if requested_backend != selected_backend:
+                entry["requested_backend"] = requested_backend
+                entry["routing_fallback"] = "missing_backend_client"
+            diagnostics[component_name] = entry
+    return diagnostics
+
+
 def build_component_coverage(
     ctx: TraceContext,
     component_names: List[str],
@@ -147,7 +357,18 @@ def build_component_coverage(
                 {
                     key: value
                     for key, value in diagnostic_entry.items()
-                    if key in {"status", "resolved_indices", "queryable_patterns", "probe_hit_count", "error"}
+                    if key
+                    in {
+                        "status",
+                        "resolved_indices",
+                        "queryable_patterns",
+                        "probe_hit_count",
+                        "error",
+                        "selected_backend",
+                        "requested_backend",
+                        "routing_source",
+                        "routing_fallback",
+                    }
                 }
             )
         entry["correlation_paths"] = [edge.render() for edge in get_incoming_edges(component_name)]
@@ -233,7 +454,11 @@ def main(argv: List[str] | None = None) -> int:
 
     try:
         client = KibanaClient.from_env()
-        orchestrator = SessionTraceOrchestrator(client)
+        loader_clients = _build_loader_clients(enabled_loaders)
+        orchestrator_kwargs: dict[str, Any] = {}
+        if loader_clients:
+            orchestrator_kwargs["loader_clients"] = loader_clients
+        orchestrator = SessionTraceOrchestrator(client, **orchestrator_kwargs)
 
         if use_conversation_id:
             # 使用智能回退的 conversation trace
@@ -256,7 +481,7 @@ def main(argv: List[str] | None = None) -> int:
             component_names = sorted(enabled_loaders) if enabled_loaders else sorted(DEFAULT_SESSION_LOADERS)
             if use_conversation_id and not enabled_loaders:
                 component_names = sorted(DEFAULT_CONVERSATION_LOADERS)
-            diagnostics_map = build_component_diagnostics_map(client, component_names)
+            diagnostics_map = _build_component_diagnostics_for_clients(client, component_names, loader_clients)
             ctx.component_coverage = build_component_coverage(
                 ctx,
                 component_names,

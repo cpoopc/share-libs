@@ -10,6 +10,7 @@ from logtracer_extractors.runtime import (
     get_output_root,
     get_runtime_diagnostics,
     init_runtime_home,
+    resolve_env_file,
 )
 
 
@@ -42,6 +43,7 @@ def test_init_runtime_home_creates_env_and_output_dirs(monkeypatch, tmp_path: Pa
     assert paths["output_root"].exists()
     assert paths["env_path"].read_text(encoding="utf-8") == DEFAULT_ENV_TEMPLATE
     assert paths["example_path"].read_text(encoding="utf-8") == DEFAULT_ENV_TEMPLATE
+    assert "\nOPS_KIBANA_COMPONENTS=" not in DEFAULT_ENV_TEMPLATE
 
 
 def test_runtime_diagnostics_reports_required_vars(monkeypatch, tmp_path: Path) -> None:
@@ -68,3 +70,22 @@ def test_component_probe_ttl_can_be_overridden(monkeypatch) -> None:
     monkeypatch.setenv("IVA_LOGTRACER_COMPONENT_PROBE_TTL_SECONDS", "120")
 
     assert get_component_probe_cache_ttl_seconds() == 120
+
+
+def test_resolve_env_file_uses_environment_profile_alias(monkeypatch, tmp_path: Path) -> None:
+    monkeypatch.setenv("XDG_CONFIG_HOME", str(tmp_path / "config"))
+    monkeypatch.delenv("IVA_LOGTRACER_ENV_FILE", raising=False)
+    env_path = tmp_path / "config" / "iva-logtracer" / ".env.stage"
+    env_path.parent.mkdir(parents=True, exist_ok=True)
+    env_path.write_text("KIBANA_ES_URL=https://example.com:9200\n", encoding="utf-8")
+
+    assert resolve_env_file("ops") == env_path.resolve()
+
+
+def test_init_runtime_home_uses_canonical_environment_alias(monkeypatch, tmp_path: Path) -> None:
+    monkeypatch.setenv("XDG_CONFIG_HOME", str(tmp_path / "config"))
+    monkeypatch.setenv("XDG_CACHE_HOME", str(tmp_path / "cache"))
+
+    paths = init_runtime_home(env_name="ops")
+
+    assert paths["env_path"].name == ".env.stage"

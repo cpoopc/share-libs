@@ -1,0 +1,30 @@
+- name: lab
+  aliases: []
+  default_backend: primary
+  component_backends: {}
+
+- name: stage
+  aliases:
+    - ops
+  default_backend: primary
+  component_backends:
+    assistant_runtime: primary
+    agent_service: primary
+    nca: ops
+    aig: ops
+    gmg: ops
+    cprc_srs: ops
+    cprc_sgs: ops
+
+- name: production
+  aliases:
+    - prod
+  default_backend: primary
+  component_backends:
+    assistant_runtime: primary
+    agent_service: primary
+    nca: ops
+    aig: ops
+    gmg: ops
+    cprc_srs: ops
+    cprc_sgs: ops

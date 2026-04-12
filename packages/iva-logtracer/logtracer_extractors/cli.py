@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import os
 
 from logtracer_extractors.kibana_client import KibanaClient
 from logtracer_extractors.runtime import (
@@ -137,9 +138,12 @@ def _render_doctor_output(diagnostics: dict[str, object]) -> str:
             resolved = ", ".join(component.get("resolved_indices", [])) if component.get("resolved_indices") else "-"
             queryable = ", ".join(component.get("queryable_patterns", [])) if component.get("queryable_patterns") else "-"
             status = component.get("status", "not_probed")
+            selected_backend = component.get("selected_backend", "primary")
+            routing_source = component.get("routing_source", "primary_default")
             lines.append(
-                f"  - {component['name']}: status={status}; aliases={aliases}; "
-                f"candidates={candidates}; resolved={resolved}; queryable={queryable}"
+                f"  - {component['name']}: status={status}; backend={selected_backend}; "
+                f"routing={routing_source}; aliases={aliases}; candidates={candidates}; "
+                f"resolved={resolved}; queryable={queryable}"
             )
     return "\n".join(lines)
 
@@ -157,22 +161,27 @@ def main(argv: list[str] | None = None) -> int:
     if args.command == "doctor":
         diagnostics = get_runtime_diagnostics(args.env)
         if args.components:
-            from logtracer_extractors.iva.component_diagnostics import build_component_diagnostics_payload
+            from logtracer_extractors.iva.component_catalog import iter_component_definitions
+            from logtracer_extractors.iva import session_tracer
 
             probe = False
             client = None
-            cache_scope = None
             if diagnostics.get("env_exists") and "env_load_error" not in diagnostics:
+                load_env_file(args.env)
+                if args.env:
+                    os.environ["IVA_LOGTRACER_ACTIVE_ENV"] = args.env
                 if diagnostics.get("required_vars", {}).get("KIBANA_ES_URL"):
                     client = KibanaClient.from_env()
                     probe = True
-                    client_url = getattr(getattr(client, "config", None), "url", "unknown")
-                    cache_scope = f"{args.env or 'default'}|{client_url}"
-            diagnostics["components"] = build_component_diagnostics_payload(
+            component_names = [definition.name for definition in iter_component_definitions()]
+            loader_clients = session_tracer._build_loader_clients(set(component_names))
+            diagnostics_map = session_tracer._build_component_diagnostics_for_clients(
                 client,
+                component_names,
+                loader_clients,
                 probe=probe,
-                cache_scope=cache_scope,
             )
+            diagnostics["components"] = [diagnostics_map[name] for name in component_names]
         if args.format == "json":
             print(json.dumps(diagnostics, indent=2, ensure_ascii=False, default=str))
         else:
@@ -189,6 +198,7 @@ def main(argv: list[str] | None = None) -> int:
         from logtracer_extractors.iva import session_tracer
 
         load_env_file(args.env)
+        os.environ["IVA_LOGTRACER_ACTIVE_ENV"] = args.env
         delegated_argv = [
             args.id,
             "--last",

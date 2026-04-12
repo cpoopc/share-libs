@@ -13,6 +13,18 @@ KIBANA_USERNAME=
 KIBANA_PASSWORD=
 KIBANA_INDEX=*:*-logs-air_assistant_runtime-*
 KIBANA_VERIFY_CERTS=true
+
+# Optional: route selected components through ops Kibana.
+# If OPS_KIBANA_USERNAME/PASSWORD are omitted, the primary Kibana credentials are reused.
+OPS_KIBANA_ES_URL=
+OPS_KIBANA_USERNAME=
+OPS_KIBANA_PASSWORD=
+OPS_KIBANA_INDEX=*
+OPS_KIBANA_VERIFY_CERTS=true
+# Optional manual override. Leave unset to follow the active env profile.
+# Set OPS_KIBANA_COMPONENTS=none to force all components onto the primary Kibana.
+# Example:
+# OPS_KIBANA_COMPONENTS=nca,aig,gmg,cprc_srs,cprc_sgs
 """
 
 
@@ -67,8 +79,24 @@ def get_component_probe_cache_ttl_seconds() -> int:
 
 
 def get_default_env_path(env_name: str | None = None) -> Path:
-    suffix = f".{env_name}" if env_name else ""
+    canonical_env = _canonical_env_name(env_name)
+    suffix = f".{canonical_env}" if canonical_env else ""
     return get_config_root() / f".env{suffix}"
+
+
+def _canonical_env_name(env_name: str | None) -> str | None:
+    if not env_name:
+        return env_name
+
+    try:
+        from .iva.environment_profiles import get_environment_profile
+    except Exception:
+        return env_name
+
+    try:
+        return get_environment_profile(env_name).name
+    except KeyError:
+        return env_name
 
 
 def ensure_runtime_layout() -> dict[str, Path]:
