@@ -58,6 +58,9 @@ LOADER_CLASSES_BY_NAME = {loader_class().name: loader_class for loader_class in 
 DEFAULT_OPS_COMPONENTS = ("nca", "aig", "gmg")
 PRIMARY_BACKEND = "primary"
 OPS_BACKEND = "ops"
+INTERNAL_DEPENDENCY_DISPLAY_ALIASES = {
+    "prefetched_request_ids.nca": "logs.nca",
+}
 
 
 def get_output_dir(session_id: str, conversation_id: str) -> Path:
@@ -106,6 +109,20 @@ def format_logs_table(logs: Dict[str, List[Dict]], max_msg_width: int = 200) -> 
             logger = log.get("logger", "")[:20]
             lines.append(f"  {timestamp} [{level:5}] {logger:20} | {message}")
     return "\n".join(lines)
+
+
+def _normalize_missing_dependencies(dependencies: List[str]) -> List[str]:
+    normalized: List[str] = []
+    seen: set[str] = set()
+
+    for dependency in dependencies:
+        display_dependency = INTERNAL_DEPENDENCY_DISPLAY_ALIASES.get(dependency, dependency)
+        if display_dependency in seen:
+            continue
+        seen.add(display_dependency)
+        normalized.append(display_dependency)
+
+    return normalized
 
 
 def is_session_id(id_str: str) -> bool:
@@ -391,10 +408,10 @@ def build_component_coverage(
         if loader_class is not None:
             if loader.depends_on and not ctx.has(*loader.depends_on):
                 entry["status"] = "dependency_missing"
-                entry["missing_dependencies"] = list(loader.depends_on)
+                entry["missing_dependencies"] = _normalize_missing_dependencies(list(loader.depends_on))
             elif loader.depends_on_any and not ctx.has_any(*loader.depends_on_any):
                 entry["status"] = "dependency_missing"
-                entry["missing_dependencies"] = list(loader.depends_on_any)
+                entry["missing_dependencies"] = _normalize_missing_dependencies(list(loader.depends_on_any))
 
         coverage[component_name] = entry
 

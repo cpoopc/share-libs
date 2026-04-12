@@ -235,8 +235,37 @@ class FakeCrossComponentClient:
 
         if index == "*:*-logs-nca-*":
             assert query == 'conversation_id:"c-cross"'
-            if kwargs["size"] < NCALoader.MIN_DOWNSTREAM_CORRELATION_SIZE:
-                raise AssertionError(f"expected expanded nca size, got {kwargs['size']}")
+            if source_includes:
+                assert kwargs["size"] == SessionTraceOrchestrator.NCA_REQUEST_ID_PREFETCH_SIZE
+                assert kwargs["sort"] == [{"@timestamp": {"order": "asc"}}]
+                assert source_includes == NCALoader.REQUEST_ID_SOURCE_INCLUDES
+                return {
+                    "hits": {
+                        "hits": [
+                            {
+                                "_source": {
+                                    "@timestamp": "2026-04-12T00:00:00.900Z",
+                                    "request_id": "req-123",
+                                }
+                            }
+                        ]
+                    }
+                }
+
+            if kwargs["size"] <= 5:
+                return {
+                    "hits": {
+                        "hits": [
+                            {
+                                "_source": {
+                                    "@timestamp": "2026-04-12T00:00:01.000Z",
+                                    "message": "nca",
+                                }
+                            }
+                        ]
+                    }
+                }
+
             return {
                 "hits": {
                     "hits": [
@@ -289,6 +318,10 @@ def test_trace_by_session_queries_nca_downstream_components() -> None:
     assert "*:*-logs-nca-*" in called_indices
     assert "*:*-logs-aig-*" in called_indices
     assert "*:*-logs-gmg-*" in called_indices
+    nca_calls = [call for call in client.calls if call["index"] == "*:*-logs-nca-*"]
+    assert len(nca_calls) == 1
+    assert nca_calls[0]["size"] == 5000
+    assert nca_calls[0].get("source_includes") is None
     assert set(ctx.logs) == {"assistant_runtime", "nca", "aig", "gmg"}
 
 
@@ -326,10 +359,15 @@ def test_trace_by_session_falls_back_to_full_runtime_for_small_nova_chain() -> N
     assert assistant_runtime_calls[1].get("sort") is None
     assert assistant_runtime_calls[1]["size"] == 5
     nca_calls = [call for call in client.calls if call["index"] == "*:*-logs-nca-*"]
-    assert len(nca_calls) == 1
-    assert nca_calls[0]["size"] == NCALoader.MIN_DOWNSTREAM_CORRELATION_SIZE
+    assert len(nca_calls) == 2
+    assert nca_calls[0]["size"] == SessionTraceOrchestrator.NCA_REQUEST_ID_PREFETCH_SIZE
+    assert nca_calls[0]["source_includes"] == NCALoader.REQUEST_ID_SOURCE_INCLUDES
+    assert nca_calls[0]["sort"] == [{"@timestamp": {"order": "asc"}}]
+    assert nca_calls[1]["size"] == 5
+    assert nca_calls[1].get("source_includes") is None
     assert "*:*-logs-aig-*" in called_indices
     assert "*:*-logs-gmg-*" in called_indices
+    assert len(ctx.logs["nca"]) == 1
     assert set(ctx.logs) == {"assistant_runtime", "nca", "aig", "gmg"}
 
 

@@ -14,8 +14,10 @@ from typing import TYPE_CHECKING
 
 try:
     from ...loaders import LogLoader
+    from .nca import NCALoader
 except ImportError:
     from loaders import LogLoader
+    from nca import NCALoader
 
 if TYPE_CHECKING:
     from ...loaders import TraceContextProtocol
@@ -37,9 +39,9 @@ class GMGLoader(LogLoader):
         return "*:*-logs-gmg-*"
 
     @property
-    def depends_on(self) -> list:
-        """依赖 NCA 日志"""
-        return ["logs.nca"]
+    def depends_on_any(self) -> list:
+        """依赖 NCA 日志或隐藏 request_id 预取结果。"""
+        return ["prefetched_request_ids.nca", "logs.nca"]
 
     def build_query(self, ctx: "TraceContextProtocol") -> str:
         """
@@ -47,25 +49,16 @@ class GMGLoader(LogLoader):
 
         GMG 的 log_context_RCRequestId = NCA 的 request_id
         """
-        nca_logs = ctx.logs.get("nca", [])
-        if not nca_logs:
-            return ""
-
-        # 提取所有 NCA 的 request_id
-        request_ids = set()
-        for log in nca_logs:
-            rid = log.get("request_id", "")
-            if rid:
-                request_ids.add(rid)
-
+        request_ids = ctx.get_prefetched_request_ids("nca")
+        if not request_ids:
+            request_ids = NCALoader.extract_request_ids_from_logs(ctx.logs.get("nca", []))
         if not request_ids:
             return ""
 
         # 构建 OR 查询
         if len(request_ids) == 1:
-            return f'log_context_RCRequestId:"{list(request_ids)[0]}"'
+            return f'log_context_RCRequestId:"{request_ids[0]}"'
 
         # 多个 request_id 用 OR 连接
         query_parts = [f'"{rid}"' for rid in request_ids]
         return f'log_context_RCRequestId:({" OR ".join(query_parts)})'
-

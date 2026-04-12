@@ -45,6 +45,8 @@ class TraceContext:
     # ==================== 日志存储 ====================
     logs: Dict[str, List[Dict[str, Any]]] = field(default_factory=dict)
     component_coverage: Dict[str, Dict[str, Any]] = field(default_factory=dict)
+    prefetched_logs: Dict[str, List[Dict[str, Any]]] = field(default_factory=dict)
+    prefetched_request_ids: Dict[str, List[str]] = field(default_factory=dict)
     
     # ==================== 辅助方法 ====================
     
@@ -98,6 +100,22 @@ class TraceContext:
     def get_total_logs(self) -> int:
         """获取总日志条数"""
         return sum(len(logs) for logs in self.logs.values())
+
+    def store_prefetched_logs(self, loader_name: str, logs: List[Dict[str, Any]]) -> None:
+        """存储隐藏 prefetch 结果，供 orchestrator 复用。"""
+        self.prefetched_logs[loader_name] = list(logs)
+
+    def consume_prefetched_logs(self, loader_name: str) -> List[Dict[str, Any]]:
+        """取出隐藏 prefetch 结果并移除，避免重复消费。"""
+        return self.prefetched_logs.pop(loader_name, [])
+
+    def store_prefetched_request_ids(self, loader_name: str, request_ids: List[str]) -> None:
+        """存储隐藏 request_id 预取结果，供下游关联查询使用。"""
+        self.prefetched_request_ids[loader_name] = list(request_ids)
+
+    def get_prefetched_request_ids(self, loader_name: str) -> List[str]:
+        """读取隐藏 request_id 预取结果。"""
+        return list(self.prefetched_request_ids.get(loader_name, []))
     
     def to_result(self) -> Dict[str, Any]:
         """转换为结果字典（兼容旧 API）"""

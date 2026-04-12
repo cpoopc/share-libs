@@ -8,7 +8,7 @@ IVA SessionTraceOrchestrator - IVA 会话追踪编排器
 
 import sys
 from concurrent.futures import ThreadPoolExecutor, as_completed
-from typing import List, Optional, Set, Type
+from typing import Any, List, Optional, Set, Type
 
 try:
     from ..kibana_client import KibanaClient
@@ -17,11 +17,13 @@ try:
     from .loaders import ALL_LOADERS
     from .loaders.assistant_runtime import AssistantRuntimeLoader
     from .trace_context import TraceContext
+    from ..nova.loaders import NCALoader
 except ImportError:
     from kibana_client import KibanaClient, parse_time_range
     from loaders import ALL_LOADERS, LogLoader
     from loaders.assistant_runtime import AssistantRuntimeLoader
     from trace_context import TraceContext
+    from nova.loaders import NCALoader
 
 
 class SessionTraceOrchestrator:
@@ -41,12 +43,15 @@ class SessionTraceOrchestrator:
         "cprc_srs": "srs_session_id",
         "cprc_sgs": "sgs_session_id",
     }
+    NCA_REQUEST_ID_PREFETCH_SIZE = 500
+    NCA_REQUEST_ID_DEPENDENT_LOADERS = {"aig", "gmg"}
 
     def __init__(
         self,
         client: KibanaClient,
         loader_classes: Optional[List[Type[LogLoader]]] = None,
         max_workers: int = 5,
+        loader_clients: Optional[dict[str, Any]] = None,
     ):
         """
         初始化编排器
@@ -58,14 +63,19 @@ class SessionTraceOrchestrator:
         """
         self.client = client
         self.max_workers = max_workers
+        self.loader_clients = dict(loader_clients or {})
 
         if loader_classes is None:
             loader_classes = ALL_LOADERS
         self.loaders: List[LogLoader] = [cls() for cls in loader_classes]
 
+    def _get_client_for_loader(self, loader: LogLoader) -> Any:
+        """Return the component-specific client when configured."""
+        return self.loader_clients.get(loader.name, self.client)
+
     def _load_single(self, loader: LogLoader, ctx: TraceContext) -> LogLoader:
         """加载单个 loader（用于并发执行）"""
-        loader.load(ctx, self.client)
+        loader.load(ctx, self._get_client_for_loader(loader))
         return loader
 
     def _get_loader(self, name: str) -> Optional[LogLoader]:
@@ -104,24 +114,142 @@ class SessionTraceOrchestrator:
 
         start_time = parse_time_range(ctx.time_range) if ctx.time_range else None
         end_time = "now" if ctx.time_range else None
-        prefetch_size = min(ctx.size, self.ASSISTANT_RUNTIME_PREFETCH_SIZE)
+        prefetch_size = self._get_assistant_runtime_prefetch_size(ctx)
 
         print("   Prefetching assistant_runtime metadata...")
         try:
-            result = self.client.search(
-                query=query,
-                index=runtime_loader.index_pattern,
-                start_time=start_time,
-                end_time=end_time,
-                size=prefetch_size,
-                sort=[{"@timestamp": {"order": "asc"}}],
-                source_includes=runtime_loader.get_meta_source_includes(),
-            )
+            search_params = {
+                "query": query,
+                "index": runtime_loader.index_pattern,
+                "start_time": start_time,
+                "end_time": end_time,
+                "size": prefetch_size,
+            }
+            search_params["sort"] = [{"@timestamp": {"order": "asc"}}]
+            search_params["source_includes"] = runtime_loader.get_meta_source_includes()
+
+            result = self.client.search(**search_params)
             hits = result.get("hits", {}).get("hits", [])
             logs = [hit.get("_source", {}) for hit in hits]
             runtime_loader.extract_context_from_logs(ctx, logs)
+            if self._can_reuse_assistant_runtime_prefetch(ctx, logs):
+                ctx.store_prefetched_logs(runtime_loader.name, logs[: ctx.size])
         except Exception as e:
             print(f"   ⚠️  assistant_runtime metadata prefetch failed: {e}", file=sys.stderr)
+
+    def _get_assistant_runtime_prefetch_size(self, ctx: TraceContext) -> int:
+        """metadata prefetch 维持轻量窗口，避免把优化变成回归。"""
+        return min(ctx.size, self.ASSISTANT_RUNTIME_PREFETCH_SIZE)
+
+    def _has_conversation_dependent_loaders(self, ctx: TraceContext) -> bool:
+        """conversation_id 链路更依赖 full runtime 结果，避免误复用 metadata。"""
+        for loader_name, attr_name in self.ASSISTANT_RUNTIME_ID_DEPENDENT_LOADERS.items():
+            if attr_name == "conversation_id" and ctx.is_loader_enabled(loader_name):
+                return True
+        return False
+
+    def _can_reuse_assistant_runtime_prefetch(
+        self,
+        ctx: TraceContext,
+        logs: list[dict],
+    ) -> bool:
+        """prefetch 已满足当前链路依赖时，才允许跳过 full runtime query。"""
+        if not logs:
+            return False
+        if not ctx.is_loader_enabled("assistant_runtime"):
+            return False
+        if ctx.size > self.ASSISTANT_RUNTIME_PREFETCH_SIZE:
+            return False
+        if self._has_conversation_dependent_loaders(ctx):
+            return False
+
+        for loader_name, attr_name in self.ASSISTANT_RUNTIME_ID_DEPENDENT_LOADERS.items():
+            if ctx.is_loader_enabled(loader_name) and not getattr(ctx, attr_name, None):
+                return False
+        return True
+
+    def _should_reuse_assistant_runtime_prefetch(self, ctx: TraceContext) -> bool:
+        """小 size 场景直接复用 prefetch，避免 assistant_runtime 双查。"""
+        if ctx.size > self.ASSISTANT_RUNTIME_PREFETCH_SIZE:
+            return False
+        if not ctx.is_loader_enabled("assistant_runtime"):
+            return False
+        return bool(ctx.prefetched_logs.get("assistant_runtime"))
+
+    def _promote_prefetched_assistant_runtime(
+        self,
+        ctx: TraceContext,
+        pending: Set[LogLoader],
+        completed: Set[str],
+    ) -> None:
+        """将隐藏 prefetch 结果提升为正式 assistant_runtime 输出。"""
+        if not self._should_reuse_assistant_runtime_prefetch(ctx):
+            return
+
+        runtime_loader = self._get_loader("assistant_runtime")
+        if runtime_loader is None or runtime_loader not in pending:
+            return
+
+        logs = ctx.consume_prefetched_logs(runtime_loader.name)
+        if not logs:
+            return
+
+        ctx.logs[runtime_loader.name] = logs
+        pending.discard(runtime_loader)
+        completed.add(runtime_loader.name)
+        print(f"   📊 {runtime_loader.name}: {len(logs)} logs (reused prefetch)")
+
+    def _should_prefetch_nca_request_ids(self, ctx: TraceContext) -> bool:
+        """小窗口 Nova 链路先隐藏预取 request_id，避免下游关联被采样截断。"""
+        if not ctx.conversation_id:
+            return False
+        if ctx.size >= self.NCA_REQUEST_ID_PREFETCH_SIZE:
+            return False
+        if ctx.logs.get("nca"):
+            return False
+        if ctx.get_prefetched_request_ids("nca"):
+            return False
+        return any(
+            ctx.is_loader_enabled(loader_name)
+            for loader_name in self.NCA_REQUEST_ID_DEPENDENT_LOADERS
+        )
+
+    def _prefetch_nca_request_ids(self, ctx: TraceContext) -> None:
+        """隐藏预取 NCA request_id，只服务于下游 AIG/GMG 关联。"""
+        if not self._should_prefetch_nca_request_ids(ctx):
+            return
+
+        nca_loader = self._get_loader("nca")
+        if nca_loader is None:
+            nca_loader = NCALoader()
+        if not isinstance(nca_loader, NCALoader):
+            return
+
+        query = nca_loader.build_query(ctx)
+        if not query:
+            return
+
+        start_time = parse_time_range(ctx.time_range) if ctx.time_range else None
+        end_time = "now" if ctx.time_range else None
+
+        print("   Prefetching nca request_ids...")
+        try:
+            result = self._get_client_for_loader(nca_loader).search(
+                query=query,
+                index=nca_loader.index_pattern,
+                start_time=start_time,
+                end_time=end_time,
+                size=self.NCA_REQUEST_ID_PREFETCH_SIZE,
+                sort=[{"@timestamp": {"order": "asc"}}],
+                source_includes=nca_loader.get_request_id_source_includes(),
+            )
+            hits = result.get("hits", {}).get("hits", [])
+            logs = [hit.get("_source", {}) for hit in hits]
+            request_ids = nca_loader.extract_request_ids_from_logs(logs)
+            if request_ids:
+                ctx.store_prefetched_request_ids(nca_loader.name, request_ids)
+        except Exception as e:
+            print(f"   ⚠️  nca request_id prefetch failed: {e}", file=sys.stderr)
 
     def trace(self, ctx: TraceContext) -> TraceContext:
         """执行追踪，按依赖顺序执行所有可执行的 loader（同一轮内并发）"""
@@ -136,8 +264,10 @@ class SessionTraceOrchestrator:
             print(f"   Conversation ID: {ctx.conversation_id}")
 
         self._prefetch_assistant_runtime_context(ctx)
+        self._promote_prefetched_assistant_runtime(ctx, pending, completed)
 
         for iteration in range(max_iterations):
+            self._prefetch_nca_request_ids(ctx)
             ready = [loader for loader in pending if loader.can_load(ctx)]
 
             if not ready:
@@ -150,7 +280,7 @@ class SessionTraceOrchestrator:
                 # 单个 loader，直接执行
                 loader = ready[0]
                 print(f"   Loading {loader.name}...")
-                loader.load(ctx, self.client)
+                loader.load(ctx, self._get_client_for_loader(loader))
                 loader.post_load(ctx)
                 pending.discard(loader)
                 completed.add(loader.name)
