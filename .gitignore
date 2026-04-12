@@ -14,3 +14,4 @@ apps/iva_logtracer/.env.lab
 apps/iva_logtracer/.env.production
 packages/iva-logtracer/output/
 packages/iva-logtracer/trace_analysis.json
+docs/superpowers/
