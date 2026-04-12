@@ -6,6 +6,7 @@ from pathlib import Path
 
 PACKAGE_ROOT = Path(__file__).resolve().parent.parent
 APP_NAME = "iva-logtracer"
+DEFAULT_COMPONENT_PROBE_TTL_SECONDS = 600
 DEFAULT_ENV_TEMPLATE = """# IVA Logtracer configuration
 KIBANA_ES_URL=
 KIBANA_USERNAME=
@@ -45,6 +46,24 @@ def get_output_root() -> Path:
     if override:
         return Path(override).expanduser().resolve()
     return get_cache_root() / "output" / "iva_session"
+
+
+def get_component_probe_cache_path() -> Path:
+    override = os.getenv("IVA_LOGTRACER_COMPONENT_PROBE_CACHE_PATH")
+    if override:
+        return Path(override).expanduser().resolve()
+    return get_cache_root() / "component-probes.json"
+
+
+def get_component_probe_cache_ttl_seconds() -> int:
+    raw_value = os.getenv(
+        "IVA_LOGTRACER_COMPONENT_PROBE_TTL_SECONDS",
+        str(DEFAULT_COMPONENT_PROBE_TTL_SECONDS),
+    )
+    try:
+        return max(0, int(raw_value))
+    except ValueError:
+        return DEFAULT_COMPONENT_PROBE_TTL_SECONDS
 
 
 def get_default_env_path(env_name: str | None = None) -> Path:

@@ -32,7 +32,7 @@ Use these cases to validate both trigger boundaries and task-success behavior af
 
 - Prompt: `production 昨天下午用户说机器人没响应，先帮我定位可疑 session`
 - Expected route: `discover`, then `trace` for the chosen candidate
-- Must not do: guess a session ID or jump directly to `report`
+- Must not do: guess a session ID, run `doctor` as a default preflight, or jump directly to `report`
 
 ## Should Not Trigger
 
@@ -65,33 +65,39 @@ Use these cases to validate both trigger boundaries and task-success behavior af
 - Expected route: validate for `*_trace.json`, then either continue with `turn` or explicitly say the trace is incomplete and should be rerun with `--save-json`
 - Pass condition: the skill does not guess or silently continue with missing artifacts
 
+### 11. Normal trace should not start with doctor
+
+- Prompt: `trace 这个 sessionId s-abc123，看 agent 为什么没回复`
+- Expected route: `trace --save-json` then `report` by default
+- Must not do: run `doctor` first unless the request also questions env setup, credentials, or component index availability
+
 ## High-Risk Additions
 
-### 11. Broad symptom but explicit tool suspicion
+### 12. Broad symptom but explicit tool suspicion
 
 - Prompt: `production 15:10 到 15:25 有用户投诉“查联系人一直没结果”，先帮我定位可疑 session，再判断是不是工具调用根本没完成`
 - Expected route: `discover`, then `trace`, then `audit tools`
 - Must not do: flatten into the default `report` path and lose the tool-audit intent
 
-### 12. Broad symptom but explicit KB suspicion
+### 13. Broad symptom but explicit KB suspicion
 
 - Prompt: `production 今天下午有用户说机器人回答“没找到知识”，先定位 session，再判断是不是 KB 调到了但答案没采用`
 - Expected route: `discover`, then `trace`, then `audit kb`
 - Must not do: treat discovery as a reason to drop the KB-audit intent
 
-### 13. Stable ID with KB-flavored tool lifecycle question
+### 14. Stable ID with KB-flavored tool lifecycle question
 
 - Prompt: `这个 conversationId c-mixed-015 帮我看知识库工具调用是不是成功了，如果成功为什么最终回复还是说没找到人`
 - Expected route: `trace --save-json`, then `audit tools`
 - Must not do: downgrade to `audit kb` just because the underlying data sounds like directory or people lookup content
 
-### 14. Saved trace directory, tool audit requested but JSON missing
+### 15. Saved trace directory, tool audit requested but JSON missing
 
 - Prompt: `用这个 saved trace dir 审查工具调用状态，看看是不是 tool 已经返回成功但最终回复没采用`
 - Expected route: validate `*_trace.json` first, then either continue with `audit tools` or explicitly stop with an incomplete-trace message
 - Must not do: guess tool lifecycle from partial artifacts
 
-### 15. Saved trace directory, KB audit requested but JSON missing
+### 16. Saved trace directory, KB audit requested but JSON missing
 
 - Prompt: `用这个 saved trace dir 看看知识库是不是调到了但最终回答没采用`
 - Expected route: validate `*_trace.json` first, then either continue with `audit kb` or explicitly stop with an incomplete-trace message
@@ -104,6 +110,7 @@ Use these cases to validate both trigger boundaries and task-success behavior af
 - Ambiguous cases explicitly explain the chosen path.
 - Any request for `turn`, `report`, or `audit tools` checks for `*_trace.json` first.
 - Any request with only a broad symptom and no stable trace target starts with `discover`.
+- Normal `discover` or `trace` cases do not insert `doctor` unless the prompt explicitly questions environment, credentials, or index availability.
 - Broad symptom cases with explicit KB or tool suspicion preserve that narrower audit intent after discovery.
 - Explicit tool-lifecycle questions win over KB wording when both signals appear in the same trace request.
 - Saved-trace KB or tool audits stop on missing artifacts instead of guessing from partial output.

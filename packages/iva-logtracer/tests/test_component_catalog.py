@@ -1,6 +1,8 @@
 from logtracer_extractors.iva.component_catalog import (
     get_component_definition,
+    get_component_catalog_path,
     iter_component_definitions,
+    load_component_catalog_rows,
 )
 from logtracer_extractors.iva.loaders import (
     AgentServiceLoader,
@@ -11,6 +13,17 @@ from logtracer_extractors.iva.loaders import (
 )
 from logtracer_extractors.nova.loaders.aig import AIGLoader
 from logtracer_extractors.nova.loaders.gmg import GMGLoader
+
+
+def test_component_catalog_metadata_is_loaded_from_yaml() -> None:
+    catalog_path = get_component_catalog_path()
+    rows = load_component_catalog_rows()
+
+    assert catalog_path.name == "components.yaml"
+    assert catalog_path.exists() is True
+    assert rows[0]["name"] == "assistant_runtime"
+    assert rows[0]["aliases"] == ["assistant-runtime", "air", "assistant runtime", "runtime"]
+    assert rows[-1]["name"] == "cprc_sgs"
 
 
 def test_component_catalog_resolves_aliases_and_matches_loader_patterns() -> None:

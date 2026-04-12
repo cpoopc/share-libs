@@ -15,6 +15,8 @@ from logtracer_extractors.iva.loaders import (
     NCALoader,
 )
 from logtracer_extractors.iva.orchestrator import SessionTraceOrchestrator
+from logtracer_extractors.nova.loaders.aig import AIGLoader
+from logtracer_extractors.nova.loaders.gmg import GMGLoader
 
 
 class FakeParallelClient:
@@ -160,3 +162,105 @@ def test_trace_by_session_can_use_hidden_prefetch_without_full_runtime_loader() 
     assert assistant_runtime_calls[0]["source_includes"] == AssistantRuntimeLoader.META_SOURCE_INCLUDES
     assert "assistant_runtime" not in ctx.logs
     assert set(ctx.logs) == {"nca", "cprc_sgs"}
+
+
+class FakeCrossComponentClient:
+    def __init__(self) -> None:
+        self.calls: list[dict] = []
+
+    def search(self, **kwargs) -> dict:
+        self.calls.append(kwargs)
+        index = kwargs["index"]
+        query = kwargs["query"]
+        source_includes = kwargs.get("source_includes")
+
+        if index == "*:*-logs-air_assistant_runtime-*":
+            if source_includes:
+                return {
+                    "hits": {
+                        "hits": [
+                            {
+                                "_source": {
+                                    "@timestamp": "2026-04-12T00:00:00.100Z",
+                                    "sessionId": "s-cross",
+                                    "conversationId": "c-cross",
+                                    "accountId": "123",
+                                    "message": "runtime prefetch",
+                                }
+                            }
+                        ]
+                    }
+                }
+
+            assert query == 'sessionId:"s-cross"'
+            return {
+                "hits": {
+                    "hits": [
+                        {
+                            "_source": {
+                                "@timestamp": "2026-04-12T00:00:00.100Z",
+                                "sessionId": "s-cross",
+                                "conversationId": "c-cross",
+                                "accountId": "123",
+                                "message": "runtime full",
+                            }
+                        }
+                    ]
+                }
+            }
+
+        if index == "*:*-logs-nca-*":
+            assert query == 'conversation_id:"c-cross"'
+            return {
+                "hits": {
+                    "hits": [
+                        {
+                            "_source": {
+                                "@timestamp": "2026-04-12T00:00:01.000Z",
+                                "message": "nca",
+                                "request_id": "req-123",
+                            }
+                        }
+                    ]
+                }
+            }
+
+        if index == "*:*-logs-aig-*":
+            assert query == 'request_id:"req-123"'
+            return {"hits": {"hits": [{"_source": {"@timestamp": "2026-04-12T00:00:01.100Z", "message": "aig"}}]}}
+
+        if index == "*:*-logs-gmg-*":
+            assert query == 'log_context_RCRequestId:"req-123"'
+            return {"hits": {"hits": [{"_source": {"@timestamp": "2026-04-12T00:00:01.200Z", "message": "gmg"}}]}}
+
+        raise AssertionError(f"unexpected search call: {kwargs}")
+
+
+def test_trace_by_session_queries_nca_downstream_components() -> None:
+    client = FakeCrossComponentClient()
+    orchestrator = SessionTraceOrchestrator(
+        client,
+        loader_classes=[
+            AssistantRuntimeLoader,
+            NCALoader,
+            AIGLoader,
+            GMGLoader,
+        ],
+        max_workers=4,
+    )
+
+    ctx = orchestrator.trace_by_session(
+        session_id="s-cross",
+        time_range="1h",
+        enabled_loaders={"assistant_runtime", "nca", "aig", "gmg"},
+        size=5000,
+    )
+
+    called_indices = [call["index"] for call in client.calls]
+
+    assert ctx.conversation_id == "c-cross"
+    assert called_indices.count("*:*-logs-air_assistant_runtime-*") == 2
+    assert "*:*-logs-nca-*" in called_indices
+    assert "*:*-logs-aig-*" in called_indices
+    assert "*:*-logs-gmg-*" in called_indices
+    assert set(ctx.logs) == {"assistant_runtime", "nca", "aig", "gmg"}

@@ -241,6 +241,8 @@ class KibanaClient:
         search_after: Optional[List[Any]] = None,
         source_includes: Optional[List[str]] = None,
         source_excludes: Optional[List[str]] = None,
+        track_total_hits: Optional[bool | int] = None,
+        terminate_after: Optional[int] = None,
     ) -> Dict[str, Any]:
         """
         搜索日志
@@ -257,6 +259,12 @@ class KibanaClient:
             },
             "size": size,
         }
+
+        if track_total_hits is not None:
+            body["track_total_hits"] = track_total_hits
+
+        if terminate_after is not None:
+            body["terminate_after"] = terminate_after
         
         # 添加查询字符串
         if query and query.strip() and query != "*":
@@ -282,7 +290,7 @@ class KibanaClient:
             })
         
         # 排序
-        if sort:
+        if sort is not None:
             body["sort"] = sort
         else:
             body["sort"] = [{time_field: {"order": "desc"}}]

@@ -18,21 +18,14 @@ from datetime import datetime, timedelta
 from typing import Dict, List, Optional, Set, Tuple
 
 try:
+    from ..correlation_graph import is_downstream_component
     from .span_model import Span, Trace
 except ImportError:
+    try:
+        from extractors.iva.correlation_graph import is_downstream_component
+    except ImportError:
+        from correlation_graph import is_downstream_component
     from span_model import Span, Trace
-
-
-# 组件调用链 (从上游到下游)
-COMPONENT_CALL_CHAIN = [
-    "assistant_runtime",  # AR 是入口
-    "nca",                # AR 调用 NCA
-    "aig",                # NCA 可能调用 AIG
-    "gmg",                # NCA/AIG 调用 GMG
-    "agent_service",      # AIG 调用 Agent Service
-    "cprc_srs",           # AR 调用 CPRC SRS (语音识别)
-    "cprc_sgs",           # AR 调用 CPRC SGS (语音合成)
-]
 
 # 操作包含关系 (父操作 -> 子操作列表)
 OPERATION_CONTAINS = {
@@ -194,12 +187,7 @@ class SpanCorrelator:
     
     def _is_component_call_chain(self, child_component: str, parent_component: str) -> bool:
         """检查是否是组件调用链"""
-        try:
-            parent_idx = COMPONENT_CALL_CHAIN.index(parent_component)
-            child_idx = COMPONENT_CALL_CHAIN.index(child_component)
-            return child_idx > parent_idx
-        except ValueError:
-            return False
+        return is_downstream_component(parent_component, child_component)
     
     def _is_operation_contained(self, child_operation: str, parent_operation: str) -> bool:
         """检查操作包含关系"""

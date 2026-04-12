@@ -46,6 +46,22 @@ iva-logtracer trace 123e4567-e89b-12d3-a456-426614174000 --env production
 iva-logtracer trace s-abc123xyz --env production --save-json
 ```
 
+## Doctor
+
+Use `iva-logtracer doctor` only as a fallback diagnostic command. It is not a default preflight step for normal `discover`, `trace`, `report`, or audit workflows.
+
+Reach for it when you need to answer questions like:
+
+- is the environment file loading correctly
+- are Kibana credentials or connectivity broken
+- does this environment have queryable indices for `assistant_runtime`, `nca`, `aig`, `gmg`, or CPRC
+- is a missing component in the trace likely an environment/index problem rather than just a trace-level gap
+
+```bash
+iva-logtracer doctor --env production
+iva-logtracer doctor --env production --components --format json
+```
+
 ## Turn Analysis
 
 Use `iva-logtracer turn` only after `iva-logtracer trace --save-json` has created a saved session output directory with `*_trace.json` files.
@@ -103,7 +119,8 @@ iva-logtracer report \
 - Start with `iva-logtracer discover` when the user gives only a broad symptom, time window, or weak search clue and you need candidate sessions before tracing.
 - Start with `iva-logtracer trace` for session correlation, component coverage, and initial debugging.
 - Run `iva-logtracer init` once on a new machine to create config and cache roots.
-- Run `iva-logtracer doctor` when installation, env loading, or output paths are unclear.
+- Run `iva-logtracer doctor` only when installation, env loading, credentials, component index availability, or output paths are unclear.
+- Do not run `iva-logtracer doctor` as a routine preflight before `discover` or `trace`.
 - Add `--last` when the user gives a time window or the default range risks missing the event.
 - Add `--loaders` when the user only cares about specific components such as `aig`, `gmg`, or `cprc_srs`.
 - Add `--save-json` when the trace output may need turn analysis, tool auditing, or deeper offline review.

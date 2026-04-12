@@ -30,3 +30,9 @@ iva-logtracer = "logtracer_extractors.cli:main"
 [tool.setuptools.packages.find]
 where = ["."]
 include = ["logtracer_extractors*", "utils*"]
+
+[tool.setuptools.package-data]
+logtracer_extractors = [
+    "iva/components.yaml",
+    "iva/correlation_graph.yaml",
+]

@@ -1,0 +1,29 @@
+- source_component: assistant_runtime
+  source_field: conversationId
+  target_component: agent_service
+  target_field: conversationId
+
+- source_component: assistant_runtime
+  source_field: conversationId
+  target_component: nca
+  target_field: conversation_id
+
+- source_component: assistant_runtime
+  source_field: srs_session_id
+  target_component: cprc_srs
+  target_field: message
+
+- source_component: assistant_runtime
+  source_field: sgs_session_id
+  target_component: cprc_sgs
+  target_field: message
+
+- source_component: nca
+  source_field: request_id
+  target_component: aig
+  target_field: request_id
+
+- source_component: nca
+  source_field: request_id
+  target_component: gmg
+  target_field: log_context_RCRequestId

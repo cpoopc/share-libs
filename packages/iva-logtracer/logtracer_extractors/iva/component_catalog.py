@@ -7,8 +7,11 @@ Defines the canonical component names used by the CLI and trace runtime.
 
 from __future__ import annotations
 
+from functools import lru_cache
+from pathlib import Path
 from dataclasses import dataclass, field
 from typing import Iterable
+import yaml
 
 
 @dataclass(frozen=True)
@@ -33,83 +36,72 @@ class ComponentDefinition:
         }
 
 
-_COMPONENT_DEFINITIONS = (
-    ComponentDefinition(
-        name="assistant_runtime",
-        aliases=["assistant-runtime", "air", "assistant runtime", "runtime"],
-        index_candidates=["*:*-logs-air_assistant_runtime-*"],
-        entry_fields=["sessionId", "conversationId", "accountId"],
-        evidence_fields=["message", "sessionId", "conversationId", "accountId"],
-    ),
-    ComponentDefinition(
-        name="agent_service",
-        aliases=["agent-service", "agent service"],
-        index_candidates=["*:*-logs-air_agent_service-*"],
-        entry_fields=["conversationId"],
-        evidence_fields=["message", "conversationId"],
-    ),
-    ComponentDefinition(
-        name="nca",
-        aliases=["nova-conversation-adapter"],
-        index_candidates=["*:*-logs-nca-*"],
-        entry_fields=["conversation_id"],
-        evidence_fields=["message", "conversation_id", "request_id"],
-    ),
-    ComponentDefinition(
-        name="aig",
-        aliases=[],
-        index_candidates=["*:*-logs-aig-*"],
-        entry_fields=["request_id"],
-        evidence_fields=["message", "request_id"],
-    ),
-    ComponentDefinition(
-        name="gmg",
-        aliases=[],
-        index_candidates=["*:*-logs-gmg-*"],
-        entry_fields=["log_context_RCRequestId"],
-        evidence_fields=["message", "log_context_RCRequestId"],
-    ),
-    ComponentDefinition(
-        name="cprc_srs",
-        aliases=["cprc-srs", "srs"],
-        index_candidates=["*:*-ai-cprc*"],
-        entry_fields=["message"],
-        evidence_fields=["message"],
-    ),
-    ComponentDefinition(
-        name="cprc_sgs",
-        aliases=["cprc-sgs", "sgs"],
-        index_candidates=["*:*-ai-cprc*"],
-        entry_fields=["message"],
-        evidence_fields=["message"],
-    ),
-)
+def get_component_catalog_path() -> Path:
+    """Return the YAML file that defines stable component metadata."""
+    return Path(__file__).with_name("components.yaml")
 
-_COMPONENTS_BY_ALIAS: dict[str, ComponentDefinition] = {}
-for definition in _COMPONENT_DEFINITIONS:
-    _COMPONENTS_BY_ALIAS[definition.name] = definition
-    _COMPONENTS_BY_ALIAS[definition.name.replace("_", "-")] = definition
-    for alias in definition.aliases:
-        _COMPONENTS_BY_ALIAS[alias] = definition
+
+@lru_cache(maxsize=1)
+def load_component_catalog_rows() -> tuple[dict[str, object], ...]:
+    """Load raw component metadata rows from YAML."""
+    payload = yaml.safe_load(get_component_catalog_path().read_text(encoding="utf-8"))
+    if not isinstance(payload, list):
+        raise ValueError("components.yaml must contain a top-level list")
+
+    rows: list[dict[str, object]] = []
+    for item in payload:
+        if not isinstance(item, dict):
+            raise ValueError("each component row in components.yaml must be a mapping")
+        if not item.get("name"):
+            raise ValueError("each component row in components.yaml must have a name")
+        rows.append(item)
+    return tuple(rows)
+
+
+@lru_cache(maxsize=1)
+def _component_definitions() -> tuple[ComponentDefinition, ...]:
+    return tuple(
+        ComponentDefinition(
+            name=str(row["name"]),
+            aliases=[str(alias) for alias in row.get("aliases", [])],
+            index_candidates=[str(candidate) for candidate in row.get("index_candidates", [])],
+            entry_fields=[str(field_name) for field_name in row.get("entry_fields", [])],
+            evidence_fields=[str(field_name) for field_name in row.get("evidence_fields", [])],
+            default_enabled=bool(row.get("default_enabled", True)),
+        )
+        for row in load_component_catalog_rows()
+    )
+
+
+@lru_cache(maxsize=1)
+def _components_by_alias() -> dict[str, ComponentDefinition]:
+    by_alias: dict[str, ComponentDefinition] = {}
+    for definition in _component_definitions():
+        by_alias[definition.name] = definition
+        by_alias[definition.name.replace("_", "-")] = definition
+        for alias in definition.aliases:
+            by_alias[alias] = definition
+    return by_alias
 
 
 def iter_component_definitions() -> tuple[ComponentDefinition, ...]:
     """Return the canonical component definitions."""
-    return _COMPONENT_DEFINITIONS
+    return _component_definitions()
 
 
 def get_component_definition(name: str) -> ComponentDefinition:
     """Resolve a canonical component definition from a name or alias."""
+    components_by_alias = _components_by_alias()
     try:
-        return _COMPONENTS_BY_ALIAS[name]
+        return components_by_alias[name]
     except KeyError as exc:
         normalized = name.strip().lower().replace(" ", "_")
         normalized = normalized.replace("__", "_")
-        if normalized in _COMPONENTS_BY_ALIAS:
-            return _COMPONENTS_BY_ALIAS[normalized]
+        if normalized in components_by_alias:
+            return components_by_alias[normalized]
         hyphenated = normalized.replace("_", "-")
-        if hyphenated in _COMPONENTS_BY_ALIAS:
-            return _COMPONENTS_BY_ALIAS[hyphenated]
+        if hyphenated in components_by_alias:
+            return components_by_alias[hyphenated]
         raise KeyError(f"Unknown component: {name}") from exc
 
 

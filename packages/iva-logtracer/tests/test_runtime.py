@@ -3,6 +3,8 @@ from pathlib import Path
 from logtracer_extractors.runtime import (
     DEFAULT_ENV_TEMPLATE,
     get_cache_root,
+    get_component_probe_cache_path,
+    get_component_probe_cache_ttl_seconds,
     get_config_root,
     get_default_env_path,
     get_output_root,
@@ -20,9 +22,13 @@ def test_runtime_defaults_use_xdg_dirs(monkeypatch, tmp_path: Path) -> None:
     assert get_config_root() == (tmp_path / "config" / "iva-logtracer").resolve()
     assert get_cache_root() == (tmp_path / "cache" / "iva-logtracer").resolve()
     assert get_output_root() == (tmp_path / "cache" / "iva-logtracer" / "output" / "iva_session").resolve()
+    assert get_component_probe_cache_path() == (
+        tmp_path / "cache" / "iva-logtracer" / "component-probes.json"
+    ).resolve()
     assert get_default_env_path("production") == (
         tmp_path / "config" / "iva-logtracer" / ".env.production"
     ).resolve()
+    assert get_component_probe_cache_ttl_seconds() == 600
 
 
 def test_init_runtime_home_creates_env_and_output_dirs(monkeypatch, tmp_path: Path) -> None:
@@ -56,3 +62,9 @@ def test_runtime_diagnostics_reports_required_vars(monkeypatch, tmp_path: Path) 
         "KIBANA_USERNAME": True,
         "KIBANA_PASSWORD": True,
     }
+
+
+def test_component_probe_ttl_can_be_overridden(monkeypatch) -> None:
+    monkeypatch.setenv("IVA_LOGTRACER_COMPONENT_PROBE_TTL_SECONDS", "120")
+
+    assert get_component_probe_cache_ttl_seconds() == 120

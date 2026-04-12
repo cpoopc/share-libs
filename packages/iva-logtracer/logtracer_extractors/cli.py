@@ -135,10 +135,11 @@ def _render_doctor_output(diagnostics: dict[str, object]) -> str:
             aliases = ", ".join(component["aliases"]) if component["aliases"] else "-"
             candidates = ", ".join(component["index_candidates"]) if component["index_candidates"] else "-"
             resolved = ", ".join(component.get("resolved_indices", [])) if component.get("resolved_indices") else "-"
+            queryable = ", ".join(component.get("queryable_patterns", [])) if component.get("queryable_patterns") else "-"
             status = component.get("status", "not_probed")
             lines.append(
                 f"  - {component['name']}: status={status}; aliases={aliases}; "
-                f"candidates={candidates}; resolved={resolved}"
+                f"candidates={candidates}; resolved={resolved}; queryable={queryable}"
             )
     return "\n".join(lines)
 
@@ -160,11 +161,18 @@ def main(argv: list[str] | None = None) -> int:
 
             probe = False
             client = None
+            cache_scope = None
             if diagnostics.get("env_exists") and "env_load_error" not in diagnostics:
                 if diagnostics.get("required_vars", {}).get("KIBANA_ES_URL"):
                     client = KibanaClient.from_env()
                     probe = True
-            diagnostics["components"] = build_component_diagnostics_payload(client, probe=probe)
+                    client_url = getattr(getattr(client, "config", None), "url", "unknown")
+                    cache_scope = f"{args.env or 'default'}|{client_url}"
+            diagnostics["components"] = build_component_diagnostics_payload(
+                client,
+                probe=probe,
+                cache_scope=cache_scope,
+            )
         if args.format == "json":
             print(json.dumps(diagnostics, indent=2, ensure_ascii=False, default=str))
         else:

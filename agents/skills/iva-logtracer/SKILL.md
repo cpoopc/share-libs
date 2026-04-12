@@ -55,7 +55,8 @@ iva-logtracer doctor
    - Confirm `lab` vs `production` when the target environment is materially ambiguous.
    - Confirm a time window only when the user gave a broad symptom without a stable ID or saved trace directory.
    - Prefer an installed `iva-logtracer` CLI.
-   - Run `iva-logtracer doctor` when env loading, credentials, or output roots are unclear.
+   - Treat `iva-logtracer doctor` as fallback-only. Do not run it as a default preflight before `discover` or `trace`.
+   - Run `iva-logtracer doctor --components` only when env loading, credentials, cache/output roots, component index availability, or component coverage are themselves in question.
 3. Run the trace or analyzer with explicit inputs.
    - Use `iva-logtracer discover` to narrow from time-window symptoms to candidate session IDs, then continue with `trace`.
    - Use `iva-logtracer turn` only after a saved trace directory exists.
@@ -83,6 +84,7 @@ iva-logtracer doctor
 - Do not skip `discover` when the user only supplied a time window or broad symptom with no stable trace target.
 - Do not run `iva-logtracer turn` against a guessed or nonexistent session directory.
 - Do not rerun `trace` if the user already supplied a valid saved trace directory unless the existing artifacts are incomplete for the requested workflow.
+- Do not insert `iva-logtracer doctor` ahead of a normal `discover` or `trace` path unless the request is specifically about installation, credentials, index availability, or missing component coverage.
 - Do not dump raw logs when a concise summary answers the request.
 - Do not treat generic log search as an `iva-logtracer` task when `kibana` is the better fit.
 - Do not deliver a free-form chat summary when a diagnostic document is expected.

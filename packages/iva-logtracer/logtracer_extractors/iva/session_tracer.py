@@ -26,6 +26,7 @@ try:
     from .ai_extractor import save_ai_analysis_files
     from .component_catalog import get_component_definition, resolve_component_names
     from .component_diagnostics import build_component_diagnostics_map
+    from .correlation_graph import get_incoming_edges
     from .loaders import ALL_LOADERS, DEFAULT_CONVERSATION_LOADERS, DEFAULT_SESSION_LOADERS
     from .orchestrator import SessionTraceOrchestrator
     from .trace_context import TraceContext
@@ -40,6 +41,7 @@ except ImportError:
     from extractors.iva.ai_extractor import save_ai_analysis_files
     from extractors.iva.component_catalog import get_component_definition, resolve_component_names
     from extractors.iva.component_diagnostics import build_component_diagnostics_map
+    from extractors.iva.correlation_graph import get_incoming_edges
     from extractors.iva.loaders import ALL_LOADERS, DEFAULT_CONVERSATION_LOADERS, DEFAULT_SESSION_LOADERS
     from extractors.iva.orchestrator import SessionTraceOrchestrator
     from extractors.iva.trace_context import TraceContext
@@ -131,22 +133,32 @@ def build_component_coverage(
             else:
                 diagnostic_entry = {
                     key: getattr(resolution, key)
-                    for key in ("status", "resolved_indices", "document_count", "error")
+                    for key in ("status", "resolved_indices", "queryable_patterns", "probe_hit_count", "error")
                     if hasattr(resolution, key)
                 }
 
         entry: Dict[str, Any] = {
             "status": "unknown",
-            "resolved_indices": list(definition.index_candidates),
+            "resolved_indices": [],
+            "queryable_patterns": [],
         }
         if diagnostic_entry is not None:
             entry.update(
                 {
                     key: value
                     for key, value in diagnostic_entry.items()
-                    if key in {"status", "resolved_indices", "document_count", "error"}
+                    if key in {"status", "resolved_indices", "queryable_patterns", "probe_hit_count", "error"}
                 }
             )
+        entry["correlation_paths"] = [edge.render() for edge in get_incoming_edges(component_name)]
+
+        loader_class = LOADER_CLASSES_BY_NAME.get(component_name)
+        if loader_class is not None:
+            loader = loader_class()
+            if loader.can_load(ctx):
+                query = loader.build_query(ctx)
+                if query:
+                    entry["query"] = query
 
         component_logs = ctx.logs.get(component_name)
         if component_logs is not None:
@@ -155,9 +167,7 @@ def build_component_coverage(
             coverage[component_name] = entry
             continue
 
-        loader_class = LOADER_CLASSES_BY_NAME.get(component_name)
         if loader_class is not None:
-            loader = loader_class()
             if loader.depends_on and not ctx.has(*loader.depends_on):
                 entry["status"] = "dependency_missing"
                 entry["missing_dependencies"] = list(loader.depends_on)

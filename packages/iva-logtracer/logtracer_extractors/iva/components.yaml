@@ -1,0 +1,90 @@
+- name: assistant_runtime
+  aliases:
+    - assistant-runtime
+    - air
+    - assistant runtime
+    - runtime
+  index_candidates:
+    - "*:*-logs-air_assistant_runtime-*"
+  entry_fields:
+    - sessionId
+    - conversationId
+    - accountId
+  evidence_fields:
+    - message
+    - sessionId
+    - conversationId
+    - accountId
+  default_enabled: true
+
+- name: agent_service
+  aliases:
+    - agent-service
+    - agent service
+  index_candidates:
+    - "*:*-logs-air_agent_service-*"
+  entry_fields:
+    - conversationId
+  evidence_fields:
+    - message
+    - conversationId
+  default_enabled: true
+
+- name: nca
+  aliases:
+    - nova-conversation-adapter
+  index_candidates:
+    - "*:*-logs-nca-*"
+  entry_fields:
+    - conversation_id
+  evidence_fields:
+    - message
+    - conversation_id
+    - request_id
+  default_enabled: true
+
+- name: aig
+  aliases: []
+  index_candidates:
+    - "*:*-logs-aig-*"
+  entry_fields:
+    - request_id
+  evidence_fields:
+    - message
+    - request_id
+  default_enabled: true
+
+- name: gmg
+  aliases: []
+  index_candidates:
+    - "*:*-logs-gmg-*"
+  entry_fields:
+    - log_context_RCRequestId
+  evidence_fields:
+    - message
+    - log_context_RCRequestId
+  default_enabled: true
+
+- name: cprc_srs
+  aliases:
+    - cprc-srs
+    - srs
+  index_candidates:
+    - "*:*-ai-cprc*"
+  entry_fields:
+    - message
+  evidence_fields:
+    - message
+  default_enabled: true
+
+- name: cprc_sgs
+  aliases:
+    - cprc-sgs
+    - sgs
+  index_candidates:
+    - "*:*-ai-cprc*"
+  entry_fields:
+    - message
+  evidence_fields:
+    - message
+  default_enabled: true

@@ -19,6 +19,7 @@ Use this reference before running any command when the request shape is not obvi
 - `discover -> trace -> report` for the default symptom-first path with no narrower audit intent.
 - `discover -> trace -> audit kb` when the broad symptom already frames a KB contradiction or ignored retrieval result.
 - `discover -> trace -> audit tools` when the broad symptom already frames a tool lifecycle or tool/reply contradiction.
+- Keep `doctor --components` out of the default follow-up chain. Use it only as a fallback diagnostic when env setup, credentials, index availability, or component coverage are in doubt.
 - `trace --save-json -> turn` only when per-turn sequencing still matters.
 - `trace --save-json -> audit kb` for KB-specific questions without a stronger tool-lifecycle signal.
 - `trace --save-json -> audit tools` for generic tool lifecycle or contradiction checks, including KB-backed tools when the question is about invocation, completion, or successful-return state.
@@ -30,3 +31,4 @@ Use this reference before running any command when the request shape is not obvi
 - Stop and ask for a narrower time window only when discovery would otherwise be too broad to be reliable.
 - Stop and report incomplete evidence when the trace directory exists but lacks `*_trace.json` for a requested report, turn analysis, KB audit, or tool audit.
 - For saved-trace workflows, missing `*_trace.json` overrides the normal IVA-trace boundary and forces `stop_on_missing_artifacts`.
+- Stop and consider `doctor --components` only when the problem is plausibly environment-level rather than trace-level, for example missing credentials, suspiciously empty component coverage, or unknown index availability.
