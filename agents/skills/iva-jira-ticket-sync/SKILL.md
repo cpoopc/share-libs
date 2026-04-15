@@ -49,8 +49,9 @@ export IVA_JIRA_SYNC_ROOT=/path/to/your/jira-ticket-sync-workspace
 1. Prefer `${XDG_CONFIG_HOME:-$HOME/.config}/jira-ticket-sync` unless the user explicitly points to another `IVA_JIRA_SYNC_ROOT`.
 2. Confirm `$IVA_JIRA_SYNC_ROOT` exists before running real sync commands.
 3. Use the shared `jira-ticket-sync` CLI, but prefer IVA-local paths from this wrapper unless the user explicitly points elsewhere.
-4. When the request is in short Chinese, write Jira `summary` and `description` in polished English while preserving the intent.
-5. When import leaves ambiguous fields, keep IVA decisions in the IVA-local field-classification cache before promoting stable aliases into `profiles/IVAS.yaml`.
+4. **Always expand profile names and config paths to their full paths.** The CLI does not resolve bare profile names — `--profile IVAS` causes `FileNotFoundError: 'IVAS'`. Use `--profile "$IVA_JIRA_SYNC_ROOT/profiles/IVAS.yaml"` (or `NOVA.yaml`, `DO.yaml`) for all `--profile` flags. The same applies to `--jira-project-config`, `--profile-root`, `--field-classification-root`, and all other path-bearing flags.
+5. When the request is in short Chinese, write Jira `summary` and `description` in polished English while preserving the intent.
+6. When import leaves ambiguous fields, keep IVA decisions in the IVA-local field-classification cache before promoting stable aliases into `profiles/IVAS.yaml`.
 
 ## References
 
